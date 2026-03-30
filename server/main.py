@@ -1,4 +1,6 @@
 import os
+import glob
+import shutil
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Security
@@ -9,7 +11,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# CODEX-FIX: Remove the insecure hardcoded API key fallback so deployments fail fast when auth is not configured.
 API_KEY = os.getenv("API_KEY")
 if not API_KEY:
     raise RuntimeError("API_KEY environment variable must be set")
@@ -23,48 +24,33 @@ async def get_api_key(api_key_header: str = Security(api_key_header)):
 
 from src.modules import shared, sleep, alarms, dashboards, termux
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    db_path = os.getenv("DB_PATH", "db/smartwake.db")
-    if not db_path.startswith("/"):
-        logging.warning(f"⚠️ RAILWAY EPHEMERAL STORAGE WARNING: DB_PATH='{db_path}' is a relative path — the database will be PERMANENTLY DELETED on next deployment. Mount a Railway Volume and set DB_PATH to an absolute path like /data/smartwake.db")
-        
-    # ---------------- Startup Sweep Phase ----------------
-    logging.warning("🧹 [CLEANUP] Sweeping legacy caches before server binds...")
-    import shutil
-    import glob
+def _sweep_garbage():
+    """Remove compiled Python caches and SQLite journal/temp files."""
     try:
         for pycache in glob.glob("**/__pycache__", recursive=True):
             shutil.rmtree(pycache, ignore_errors=True)
-        for garbage in glob.glob("**/*-journal", recursive=True) + glob.glob("**/*.tmp", recursive=True):
-            try: os.remove(garbage)
-            except OSError: pass
-    except Exception:
-        pass
-        
-    shared.init_db()
-    yield
-    
-    # ---------------- Shutdown Phase ----------------
-    logging.warning("🧹 [CLEANUP] Initiating graceful shutdown. Sweeping temporary garbage files...")
-    import shutil
-    import glob
-    
-    try:
-        # Purge all compiled python caches
-        for pycache in glob.glob("**/__pycache__", recursive=True):
-            shutil.rmtree(pycache, ignore_errors=True)
-            
-        # Clean up SQLite journals and stray temporary dumps
         for garbage in glob.glob("**/*-journal", recursive=True) + glob.glob("**/*.tmp", recursive=True):
             try:
                 os.remove(garbage)
             except OSError:
                 pass
-                
-        logging.warning("🧹 [CLEANUP] Garbage collection complete. System teardown finished cleanly!")
-    except Exception as e:
-        logging.error(f"Error during teardown: {e}")
+    except Exception:
+        pass
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db_path = os.getenv("DB_PATH", "db/smartwake.db")
+    if not db_path.startswith("/"):
+        logging.warning(
+            f"DB_PATH='{db_path}' is a relative path — database will be lost on redeploy. "
+            "Mount a Railway Volume and set DB_PATH to an absolute path like /data/smartwake.db"
+        )
+
+    _sweep_garbage()
+    shared.init_db()
+    yield
+    _sweep_garbage()
+
 
 app = FastAPI(title="SmartWake Sleep Intelligence Server", lifespan=lifespan)
 
