@@ -128,7 +128,7 @@ def _should_reset_confirmed_state(device_id: str, timestamp: str, state: dict) -
             '''
             SELECT COALESCE(alarm_time, wake_deadline) AS reset_time
             FROM sleep_sessions
-            WHERE device_id = ?
+            WHERE device_id = %s
             ORDER BY id DESC
             LIMIT 1
             ''',
@@ -163,7 +163,7 @@ def process_log(device_id: str, timestamp: str, sleep_prob: float):
             state["confirmed"] = True
             with get_db() as conn:
                 cursor = conn.cursor()
-                cursor.execute('INSERT INTO sleep_sessions (device_id, onset_time) VALUES (?, ?)', (device_id, state["onset_time"]))
+                cursor.execute('INSERT INTO sleep_sessions (device_id, onset_time) VALUES (%s, %s)', (device_id, state["onset_time"]))
                 conn.commit()
             schedule_alarm(device_id, state["onset_time"])
             return {"sleep_prob": sleep_prob, "state": "CONFIRMED", "onset_time": state["onset_time"], "consecutive_above_threshold": state["consecutive"]}
@@ -267,16 +267,17 @@ def create_log(payload: LogPayload):
                 device_id, timestamp, charging, battery_level, 
                 accel_x, accel_y, accel_z, accel_magnitude, 
                 notification_count, hour, minute
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         ''', (
             payload.device_id, timestamp_str, payload.charging, payload.battery_level,
             payload.accel_x, payload.accel_y, payload.accel_z, magnitude,
             payload.notification_count, hour, minute
         ))
+        inserted_id = cursor.fetchone()['id']
         conn.commit()
-        inserted_id = cursor.lastrowid
         
-        cursor.execute('SELECT * FROM logs WHERE device_id = ? ORDER BY id DESC LIMIT 6', (payload.device_id,))
+        cursor.execute('SELECT * FROM logs WHERE device_id = %s ORDER BY id DESC LIMIT 6', (payload.device_id,))
         rows = [dict(row) for row in cursor.fetchall()]
         
     rows.reverse()
@@ -289,7 +290,7 @@ def create_log(payload: LogPayload):
     
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute('UPDATE logs SET sleep_prob = ? WHERE id = ?', (sleep_prob, inserted_id))
+        cursor.execute('UPDATE logs SET sleep_prob = %s WHERE id = %s', (sleep_prob, inserted_id))
         conn.commit()
         
     return process_log(payload.device_id, timestamp_str, sleep_prob)

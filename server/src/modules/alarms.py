@@ -21,10 +21,7 @@ def calculate_alarm(onset_time: str, wake_deadline: str, cycle_minutes: int = 90
     ideal_wake = onset + timedelta(minutes=cycles * cycle_minutes)
     
     gap_minutes = (deadline - ideal_wake).total_seconds() / 60.0
-    if gap_minutes < 15:
-        return deadline.isoformat()
-        
-    return ideal_wake.isoformat()
+    return deadline.isoformat() if gap_minutes < 15 else ideal_wake.isoformat()
 
 # ======================== Scheduler ========================
 alarm_registry = {}
@@ -32,7 +29,7 @@ alarm_registry = {}
 def schedule_alarm(device_id: str, onset_time: str):
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM device_registry WHERE device_id = ? ORDER BY id DESC LIMIT 1', (device_id,))
+        cursor.execute('SELECT * FROM device_registry WHERE device_id = %s ORDER BY id DESC LIMIT 1', (device_id,))
         registry_row = cursor.fetchone()
         
         if not registry_row or not registry_row['wake_deadline']:
@@ -45,16 +42,15 @@ def schedule_alarm(device_id: str, onset_time: str):
         
         cursor.execute('''
             UPDATE sleep_sessions 
-            SET alarm_time = ? 
-            WHERE device_id = ? AND onset_time = ?
+            SET alarm_time = %s 
+            WHERE device_id = %s AND onset_time = %s
         ''', (alarm_time, device_id, onset_time))
         conn.commit()
         
         return alarm_time
 
 def get_alarm(device_id: str):
-    alarm_time = alarm_registry.get(device_id)
-    if alarm_time:
+    if alarm_time := alarm_registry.get(device_id):
         return alarm_time
 
     # CODEX-FIX: Fall back to the persisted session alarm so server restarts do not erase scheduled alarms.
@@ -64,7 +60,7 @@ def get_alarm(device_id: str):
             '''
             SELECT alarm_time
             FROM sleep_sessions
-            WHERE device_id = ? AND alarm_time IS NOT NULL
+            WHERE device_id = %s AND alarm_time IS NOT NULL
             ORDER BY id DESC
             LIMIT 1
             ''',
@@ -85,7 +81,7 @@ def set_wake_time(payload: WakeTimePayload):
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO device_registry (device_id, wake_deadline)
-            VALUES (?, ?)
+            VALUES (%s, %s)
             ON CONFLICT(device_id) DO UPDATE SET
             wake_deadline=excluded.wake_deadline,
             registered_at=CURRENT_TIMESTAMP
@@ -95,14 +91,13 @@ def set_wake_time(payload: WakeTimePayload):
             '''
             SELECT onset_time
             FROM sleep_sessions
-            WHERE device_id = ? AND onset_time IS NOT NULL
+            WHERE device_id = %s AND onset_time IS NOT NULL
             ORDER BY id DESC
             LIMIT 1
             ''',
             (payload.device_id,),
         )
-        session_row = cursor.fetchone()
-        if session_row:
+        if session_row := cursor.fetchone():
             latest_onset_time = session_row["onset_time"]
         conn.commit()
 

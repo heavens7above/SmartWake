@@ -2,7 +2,7 @@ import os
 import glob
 import shutil
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,8 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = os.getenv("API_KEY")
-if not API_KEY:
+if not (API_KEY := os.getenv("API_KEY")):
     raise RuntimeError("API_KEY environment variable must be set")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
 
@@ -25,27 +24,14 @@ async def get_api_key(api_key_header: str = Security(api_key_header)):
 from src.modules import shared, sleep, alarms, dashboards, termux
 
 def _sweep_garbage():
-    """Remove compiled Python caches and SQLite journal/temp files."""
-    try:
+    """Remove compiled Python caches."""
+    with suppress(Exception):
         for pycache in glob.glob("**/__pycache__", recursive=True):
             shutil.rmtree(pycache, ignore_errors=True)
-        for garbage in glob.glob("**/*-journal", recursive=True) + glob.glob("**/*.tmp", recursive=True):
-            try:
-                os.remove(garbage)
-            except OSError:
-                pass
-    except Exception:
-        pass
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db_path = os.getenv("DB_PATH", "db/smartwake.db")
-    if not db_path.startswith("/"):
-        logging.warning(
-            f"DB_PATH='{db_path}' is a relative path — database will be lost on redeploy. "
-            "Mount a Railway Volume and set DB_PATH to an absolute path like /data/smartwake.db"
-        )
-
+    # Ensure database is initialized using the provided DATABASE_URL
     _sweep_garbage()
     shared.init_db()
     yield
