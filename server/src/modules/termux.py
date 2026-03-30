@@ -18,7 +18,6 @@ def _resolve_base_url(request: Request) -> str:
     env_url = BASE_URL
     if env_url and "localhost" not in env_url and "127.0.0.1" not in env_url:
         return env_url.rstrip("/")
-    # Fallback: infer from the incoming HTTP request (useful for local dev)
     return str(request.base_url).rstrip("/")
 
 
@@ -27,43 +26,65 @@ def get_install_script(request: Request):
     """
     Returns the dynamic bash one-liner script that automates Termux.
     When users run `curl https://domain/install | bash`, this is executed.
+    Script is environment-aware: Termux-specific commands only run on Android.
     """
     base_url = _resolve_base_url(request)
 
-    script = f"""#!/data/data/com.termux/files/usr/bin/bash
-echo "[*] Initializing SmartWake Termux Deployment..."
+    script = f"""#!/bin/bash
+echo "[*] Initializing SmartWake Deployment..."
+echo ""
 
-echo ">> Updating package repositories..."
-pkg update -y && pkg upgrade -y
+# -- Detect environment --------------------------------------------------
+IS_TERMUX=false
+if [ -n "$PREFIX" ] && echo "$PREFIX" | grep -q "com.termux"; then
+  IS_TERMUX=true
+fi
 
-echo ">> Installing required libraries (Python & Termux-API)..."
-pkg install python termux-api -y
+if [ "$IS_TERMUX" = true ]; then
+  echo "[+] Termux / Android environment detected"
+else
+  echo "[~] Non-Termux environment — skipping Android-specific steps"
+fi
+echo ""
 
-echo ">> Installing python requests and schedule packages..."
-pip install requests schedule
+# -- Termux only: system packages ----------------------------------------
+if [ "$IS_TERMUX" = true ]; then
+  echo ">> Updating Termux repositories..."
+  pkg update -y && pkg upgrade -y
+  echo ">> Installing Python & Termux-API..."
+  pkg install python termux-api -y
+fi
 
-echo ">> Requesting core Android permissions (Storage & Sensors)..."
-termux-setup-storage
+# -- Universal: Python packages ------------------------------------------
+echo ">> Installing Python packages (requests, schedule)..."
+pip install requests schedule --quiet
 
+# -- Termux only: Android permissions ------------------------------------
+if [ "$IS_TERMUX" = true ]; then
+  echo ">> Requesting Android storage & sensor permissions..."
+  termux-setup-storage
+fi
+
+# -- Download payload scripts --------------------------------------------
 mkdir -p ~/smartwake
 cd ~/smartwake
-
-echo ">> Fetching configured payload scripts from Central Server..."
+echo ">> Fetching payload scripts from SmartWake server..."
 curl -sL {base_url}/termux/logger.py -o logger.py
 curl -sL {base_url}/termux/alarm.py -o alarm.py
 curl -sL {base_url}/termux/start.sh -o start.sh
-
 chmod +x start.sh
 
 echo ""
 echo "=============================================="
 echo "    DEPLOYMENT SUCCESSFUL!   "
 echo "=============================================="
-echo "To begin full telemetry monitoring, simply run:"
+echo "To begin full telemetry monitoring, run:"
 echo ""
 echo "  cd ~/smartwake && bash start.sh"
 echo ""
-echo "Note: Make sure you've placed 'alarm.mp3' in your internal storage root."
+if [ "$IS_TERMUX" = true ]; then
+  echo "Note: Place 'alarm.mp3' in /sdcard/alarm.mp3 before running."
+fi
 echo "=============================================="
 """
     return script
