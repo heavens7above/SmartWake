@@ -91,3 +91,12 @@ def health_check():
         "service": "SmartWake Sleep Intelligence Server",
         "base_url": BASE_URL,
     }
+
+from fastapi.responses import Response
+
+@app.get("/favicon.ico", include_in_schema=False)
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+@app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
+def suppress_browser_assets():
+    """Silently absorb browser-generated asset requests — keeps logs clean."""
+    return Response(status_code=204)
