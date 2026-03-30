@@ -25,6 +25,7 @@ def test_sleep_simulation_pipeline():
     """Pump 10 realistic logs representing sleep into PostgreSQL telemetry and ensure ML model parses them seamlessly."""
     base_time = datetime(2026, 4, 1, 3, 0, 0, tzinfo=timezone.utc) 
     
+    # sourcery skip: no-loop-in-tests
     for minute in range(10):
         payload = {
             "device_id": DEVICE_ID,

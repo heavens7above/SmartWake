@@ -13,4 +13,4 @@ def test_server_online():
 def test_authentication():
     """Verify the API Key validation handles invalid logic."""
     r = requests.get(f"{BASE_URL}/dashboard", headers={"X-API-Key": "invalid_key"}, params={"device_id": "pytest_sim_device"})
-    assert r.status_code in [401, 403], f"Did not reject invalid auth: {r.status_code}"
+    assert r.status_code in {401, 403}, f"Did not reject invalid auth: {r.status_code}"
