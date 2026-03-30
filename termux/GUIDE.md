@@ -15,7 +15,7 @@ Also install the companion app **Termux:API**:
 **2. Open Termux on your phone and run:**
 
 ```bash
-curl -sL https://your-railway-url.up.railway.app/install | bash
+curl -sL https://smartwake.up.railway.app/install | bash
 ```
 
 > Replace `your-railway-url.up.railway.app` with your actual Railway deployment URL.
@@ -70,7 +70,7 @@ Leave the Termux notification in your tray and go to bed! 🌙
 Updating is just as easy — re-run the same install command to pull the latest scripts from the server:
 
 ```bash
-curl -sL https://your-railway-url.up.railway.app/install | bash
+curl -sL https://smartwake.up.railway.app/install | bash
 ```
 
 ---
