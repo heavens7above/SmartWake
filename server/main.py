@@ -82,6 +82,12 @@ app.include_router(sleep.router, dependencies=[Depends(get_api_key)])
 app.include_router(alarms.router, dependencies=[Depends(get_api_key)])
 app.include_router(dashboards.router, dependencies=[Depends(get_api_key)])
 
+@app.get("/")
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    from src.modules.shared import BASE_URL
+    return {
+        "status": "ok",
+        "service": "SmartWake Sleep Intelligence Server",
+        "base_url": BASE_URL,
+    }
