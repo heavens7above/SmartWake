@@ -5,8 +5,9 @@ from src.modules.shared import BASE_URL
 
 router = APIRouter(tags=["Deployment"])
 
-# The path to the parent directory containing the termux payloads
-TERMUX_PATH = os.path.join(os.path.dirname(__file__), "../../../termux")
+# Resolved from the app's working directory (/app in container, server/ locally).
+# server/termux/ is committed into the image so it's always present.
+TERMUX_PATH = os.path.join(os.getcwd(), "termux")
 
 def _resolve_base_url(request: Request) -> str:
     """
