@@ -1,0 +1,96 @@
+import os
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import PlainTextResponse
+from src.modules.shared import BASE_URL
+
+router = APIRouter(tags=["Deployment"])
+
+# The path to the parent directory containing the termux payloads
+TERMUX_PATH = os.path.join(os.path.dirname(__file__), "../../../termux")
+
+def _resolve_base_url(request: Request) -> str:
+    """
+    Returns the authoritative server base URL.
+    Priority: BASE_URL env var (set in .env) > inferred from the incoming request.
+    The env var wins so that proxied Railway deployments always return the correct
+    public domain instead of an internal container IP.
+    """
+    env_url = BASE_URL
+    if env_url and "localhost" not in env_url and "127.0.0.1" not in env_url:
+        return env_url.rstrip("/")
+    # Fallback: infer from the incoming HTTP request (useful for local dev)
+    return str(request.base_url).rstrip("/")
+
+
+@router.get("/install", response_class=PlainTextResponse)
+def get_install_script(request: Request):
+    """
+    Returns the dynamic bash one-liner script that automates Termux.
+    When users run `curl https://domain/install | bash`, this is executed.
+    """
+    base_url = _resolve_base_url(request)
+
+    script = f"""#!/data/data/com.termux/files/usr/bin/bash
+echo "[*] Initializing SmartWake Termux Deployment..."
+
+echo ">> Updating package repositories..."
+pkg update -y && pkg upgrade -y
+
+echo ">> Installing required libraries (Python & Termux-API)..."
+pkg install python termux-api -y
+
+echo ">> Installing python requests and schedule packages..."
+pip install requests schedule
+
+echo ">> Requesting core Android permissions (Storage & Sensors)..."
+termux-setup-storage
+
+mkdir -p ~/smartwake
+cd ~/smartwake
+
+echo ">> Fetching configured payload scripts from Central Server..."
+curl -sL {base_url}/termux/logger.py -o logger.py
+curl -sL {base_url}/termux/alarm.py -o alarm.py
+curl -sL {base_url}/termux/start.sh -o start.sh
+
+chmod +x start.sh
+
+echo ""
+echo "=============================================="
+echo "    DEPLOYMENT SUCCESSFUL!   "
+echo "=============================================="
+echo "To begin full telemetry monitoring, simply run:"
+echo ""
+echo "  cd ~/smartwake && bash start.sh"
+echo ""
+echo "Note: Make sure you've placed 'alarm.mp3' in your internal storage root."
+echo "=============================================="
+"""
+    return script
+
+@router.get("/termux/{filename}", response_class=PlainTextResponse)
+def get_termux_file(request: Request, filename: str):
+    """
+    Serves the python payloads directly, while dynamically injecting
+    the authoritative BASE_URL into logger and alarm so the user
+    never has to edit SERVER_URL manually.
+    """
+    allowed_files = ["logger.py", "alarm.py", "start.sh"]
+    if filename not in allowed_files:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    file_path = os.path.join(TERMUX_PATH, filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Payload file missing on server")
+
+    with open(file_path, "r") as f:
+        content = f.read()
+
+    # Inject the live BASE_URL so the phone client is auto-configured
+    if filename in ["logger.py", "alarm.py"]:
+        base_url = _resolve_base_url(request)
+        content = content.replace('"https://your-railway-url.up.railway.app"', f'"{base_url}"')
+        content = content.replace("'https://your-railway-url.up.railway.app'", f'"{base_url}"')
+
+    return content

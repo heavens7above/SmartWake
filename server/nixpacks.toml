@@ -1,0 +1,17 @@
+[providers]
+python = "3.11"
+
+[variables]
+# Secure boundaries for Python caches
+PYTHONDONTWRITEBYTECODE = "1"
+PYTHONUNBUFFERED = "1"
+# Bound application tightly against Railway native port injection
+PORT = "8000"
+
+[phases.install]
+# Ensure bleeding edge Pip capabilities before hitting our specific bindings
+cmds = ["python -m pip install --upgrade pip", "pip install -r requirements.txt"]
+
+[start]
+# We use uvicorn directly avoiding intermediate abstractions protecting our memory footprints
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT"

@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env
+
+# MacOS
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Notebooks
+.ipynb_checkpoints/
+
+# SmartWake Specific
+server/sentinel.db
+server/smartwake.db
+server/logs/
+termux/device_id.txt
+termux/smartwake.log
+# Note: We must explicitly COMMIT the trained model right now, otherwise Railway compiles without it!
+
+# Training Data
+train/Fitabase Data */
+fitbit.zip
+train/*.csv
