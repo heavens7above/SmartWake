@@ -12,9 +12,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartwake-alarm")
 
-# CODEX-FIX: Allow the server URL to be injected at runtime instead of requiring a source edit for every deployment.
 SERVER_URL = os.getenv("SMARTWAKE_URL", "https://your-railway-url.up.railway.app")
-# CODEX-FIX: Allow API key overrides from the environment so local and hosted workers can share one script.
 API_KEY = os.getenv("SMARTWAKE_API_KEY", "sk_live_smartwake_93f8e21a")
 DEVICE_ID_FILE = "device_id.txt"
 
@@ -25,7 +23,6 @@ def get_device_id():
     return "UNKNOWN"
 
 DEVICE_ID = get_device_id()
-# CODEX-FIX: Track the last fired alarm timestamp, not just the date, so later alarms can still fire on the same day.
 last_fired_alarm_time = None
 
 def check_and_fire():

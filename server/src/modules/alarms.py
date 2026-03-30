@@ -14,7 +14,6 @@ def calculate_alarm(onset_time: str, wake_deadline: str, cycle_minutes: int = 90
     
     total_minutes = (deadline - onset).total_seconds() / 60.0
     cycles = int(total_minutes // cycle_minutes)
-    # CODEX-FIX: Fall back to the requested deadline when there is not enough time left for a full sleep cycle.
     if cycles <= 0:
         return deadline.isoformat()
     
@@ -53,7 +52,6 @@ def get_alarm(device_id: str):
     if alarm_time := alarm_registry.get(device_id):
         return alarm_time
 
-    # CODEX-FIX: Fall back to the persisted session alarm so server restarts do not erase scheduled alarms.
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -86,7 +84,6 @@ def set_wake_time(payload: WakeTimePayload):
             wake_deadline=excluded.wake_deadline,
             registered_at=CURRENT_TIMESTAMP
         ''', (payload.device_id, payload.wake_deadline.isoformat()))
-        # CODEX-FIX: Reschedule the latest detected session when the wake deadline changes after sleep onset.
         cursor.execute(
             '''
             SELECT onset_time

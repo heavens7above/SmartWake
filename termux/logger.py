@@ -15,9 +15,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("smartwake-logger")
 
-# CODEX-FIX: Allow the server URL to be injected at runtime instead of requiring a source edit for every deployment.
 SERVER_URL = os.getenv("SMARTWAKE_URL", "https://your-railway-url.up.railway.app")
-# CODEX-FIX: Allow API key overrides from the environment so local and hosted workers can share one script.
 API_KEY = os.getenv("SMARTWAKE_API_KEY", "sk_live_smartwake_93f8e21a")
 DEVICE_ID_FILE = "device_id.txt"
 
@@ -88,7 +86,6 @@ def log_cycle():
             "notification_count": notification_count
         }
         
-        # CODEX-FIX: Post to the real ingestion endpoint so telemetry reaches the FastAPI server instead of a missing route.
         res = requests.post(f"{SERVER_URL}/logs/raw.log", json=payload, headers={"X-API-Key": API_KEY}, timeout=10)
         res.raise_for_status()
         logger.info("Successfully pushed 5-minute cycle to server.")

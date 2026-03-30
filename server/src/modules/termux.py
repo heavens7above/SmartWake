@@ -8,7 +8,6 @@ router = APIRouter(tags=["Deployment"])
 
 # Resolved from the app's working directory (/app in container, server/ locally).
 # server/termux/ is committed into the image so it's always present.
-# CODEX-FIX: Resolve payloads relative to this module so routes still work when uvicorn is launched from a different cwd.
 TERMUX_PATH = Path(__file__).resolve().parents[2] / "termux"
 
 def _resolve_base_url(request: Request) -> str:
@@ -108,7 +107,6 @@ def get_termux_file(request: Request, filename: str):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Payload file missing on server")
 
-    # CODEX-FIX: Read payload scripts as UTF-8 explicitly so injected files are served consistently across hosts.
     with file_path.open("r", encoding="utf-8") as f:
         content = f.read()
 

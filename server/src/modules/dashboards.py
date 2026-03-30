@@ -39,5 +39,4 @@ def submit_rating(payload: RatingPayload):
         
     if updated:
         return {"status": "success", "message": "Rating updated."}
-    # CODEX-FIX: Return 404 when no session exists so the client does not treat a failed rating write as success.
     raise HTTPException(status_code=404, detail="No session found.")

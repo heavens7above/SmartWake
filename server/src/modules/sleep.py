@@ -113,7 +113,6 @@ def build_feature_vector(rows: list) -> np.ndarray:
 onset_state = {}
 THRESHOLD = 0.75
 
-# CODEX-FIX: Reset stale confirmed sessions so one night's onset does not keep every later log permanently stuck in CONFIRMED.
 def _should_reset_confirmed_state(device_id: str, timestamp: str, state: dict) -> bool:
     onset_time = state.get("onset_time")
     if not onset_time:
