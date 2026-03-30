@@ -1,0 +1,95 @@
+Used MCP tool: Palantir/read_multiple_files
+Viewed dashboards.py:1-44
+Viewed termux.py:1-122
+
+Here's a complete breakdown of the SmartWake server:
+
+---
+
+## SmartWake Server — Full Feature Map
+
+### Architecture Overview
+
+A **FastAPI** server that acts as the brain of the SmartWake system. It ingests sensor telemetry from an Android phone (via Termux), runs ML inference to detect sleep onset, schedules a smart alarm at the end of a sleep cycle, and serves a dashboard.
+
+All routes except `/install` and `/termux/*` require an **`X-API-Key`** header.
+
+---
+
+### 🗄️ Database — SQLite (`db/smartwake.db`)
+
+Three tables:
+
+| Table             | What it stores                                                                                        |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `logs`            | Every telemetry ping: accel XYZ, magnitude, battery, charging, notifications, timestamp, `sleep_prob` |
+| `sleep_sessions`  | One row per detected sleep: onset time, alarm time, wake deadline, quality rating                     |
+| `device_registry` | One row per phone: maps `device_id` → `wake_deadline`                                                 |
+
+---
+
+### 📡 Endpoints
+
+#### Public (no API key)
+
+| Method | Path                 | What it does                                                                                                                                                                                                                               |
+| ------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/install`           | Returns a bash one-liner. Running `curl .../install \| bash` on an Android Termux terminal: installs Python, fetches `logger.py` + `alarm.py` + `start.sh` from the server, auto-injects the server's URL so the phone is self-configuring |
+| `GET`  | `/termux/{filename}` | Serves `logger.py`, `alarm.py`, or `start.sh` with `SERVER_URL` dynamically injected                                                                                                                                                       |
+| `GET`  | `/` or `/health`     | Health check — returns `status: ok`                                                                                                                                                                                                        |
+
+#### Sleep & Inference (protected)
+
+| Method | Path            | What it does                                                                                                                                                                                                                                                                                           |
+| ------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST` | `/logs/raw.log` | **Main telemetry endpoint.** Accepts an accelerometer + battery + notification ping from the phone. Stores it in `logs`, fetches the last 6 rows, builds a 9-feature vector, runs `GradientBoostingClassifier.predict_proba()`, writes `sleep_prob` back to the row, then runs the onset state machine |
+| `POST` | `/model/upload` | Upload a new `sleep_model.pkl`. Validates it loads, atomically saves to `src/model/sleep_model.pkl`, hot-swaps into RAM — **no restart needed**                                                                                                                                                        |
+| `GET`  | `/model/info`   | Returns `loaded`, `model_type`, `source_path` of the currently active model                                                                                                                                                                                                                            |
+
+#### Alarms (protected)
+
+| Method | Path                          | What it does                                                                                                       |
+| ------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `POST` | `/wake-time`                  | Registers/updates a device's desired wake deadline. Also reschedules the alarm if sleep onset was already detected |
+| `GET`  | `/alarm-status?device_id=...` | Returns whether an alarm is scheduled and its exact ISO timestamp                                                  |
+
+#### Dashboard (protected)
+
+| Method | Path                       | What it does                                                           |
+| ------ | -------------------------- | ---------------------------------------------------------------------- |
+| `GET`  | `/dashboard?device_id=...` | Returns the latest sleep session + last 48 telemetry rows for a device |
+| `POST` | `/rating`                  | Submit a 1–5 star quality rating for the most recent sleep session     |
+
+---
+
+### 🧠 ML Pipeline (inside `POST /logs/raw.log`)
+
+```
+Phone ping → store raw row
+           → fetch last 6 rows
+           → build 9-feature vector:
+               accel_magnitude (mean, std, max)
+               zero_crossing_rate
+               notification_delta
+               consecutive_still_count
+               charging (bool)
+               hour_sin, hour_cos  ← circadian clock encoding
+           → GradientBoostingClassifier → sleep_prob [0.0–1.0]
+           → Onset state machine:
+               sleep_prob ≥ 0.75 two pings in a row → CONFIRMED
+               → INSERT sleep_session
+               → schedule_alarm()  ← finds nearest 90-min cycle boundary before wake_deadline
+```
+
+---
+
+### ⏰ Smart Alarm Math
+
+When sleep is confirmed, `schedule_alarm()`:
+
+1. Looks up the device's `wake_deadline` from `device_registry`
+2. Calculates how many full **90-minute sleep cycles** fit between `onset_time` and `wake_deadline`
+3. Picks the last complete cycle boundary — provided it's ≥ 15 min before the deadline (otherwise uses the deadline itself)
+4. Stores the result in `sleep_sessions.alarm_time`
+
+The phone polls `/alarm-status` and fires `alarm.py` when the time is reached.

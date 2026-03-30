@@ -1,57 +1,69 @@
 import os
+import contextlib
+import shutil
 import joblib
 import logging
 import numpy as np
 from pathlib import Path
 from datetime import datetime, timedelta
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File, HTTPException
 from src.modules.shared import LogPayload, get_db, compute_magnitude, cyclical_encode
 from src.modules.alarms import schedule_alarm
 
 router = APIRouter()
 
+# Canonical model location — always written/read here
+MODEL_DIR  = Path("src/model")
+MODEL_FILE = MODEL_DIR / "sleep_model.pkl"
+
 # ======================== ML Inference & Features ========================
 model = None
 model_load_attempted = False
+_model_source_path: str | None = None   # tracks which file is currently loaded
 
-# CODEX-FIX: Search the known model locations once so config/path drift does not silently disable inference.
 def _candidate_model_paths():
+    """Search the known model locations so config/path drift does not silently disable inference."""
     configured = os.getenv("MODEL_PATH")
     candidates = []
     if configured:
         candidates.append(Path(configured))
+    # canonical location first so uploads are always preferred
     candidates.extend([
-        Path("src/model/sleep_model.pkl"),
+        MODEL_FILE,
         Path("src/ml/sleep_model.pkl"),
         Path("src/sleep_model.pkl"),
     ])
-    unique_candidates = []
-    seen = set()
-    for candidate in candidates:
-        resolved = str(candidate)
-        if resolved not in seen:
-            seen.add(resolved)
-            unique_candidates.append(candidate)
-    return unique_candidates
+    seen, unique = set(), []
+    for c in candidates:
+        key = str(c)
+        if key not in seen:
+            seen.add(key)
+            unique.append(c)
+    return unique
 
-def get_model():
-    global model, model_load_attempted
-    if model_load_attempted:
+def get_model(force_reload: bool = False):
+    """Return the cached model, loading from disk on first call or when *force_reload* is True."""
+    global model, model_load_attempted, _model_source_path
+    if model_load_attempted and not force_reload:
         return model
 
     model_load_attempted = True
+    model = None
+    _model_source_path = None
+
     for model_path in _candidate_model_paths():
         if not model_path.exists():
             continue
         try:
             model = joblib.load(model_path)
+            _model_source_path = str(model_path)
             logging.info("Loaded sleep model from %s", model_path)
             break
         except Exception:
             logging.exception("Failed to load sleep model from %s", model_path)
 
     if model is None:
-        logging.warning("Sleep model not found; inference will return 0.0 until MODEL_PATH is configured.")
+        logging.warning("Sleep model not found; inference will return 0.0 until a model is uploaded.")
     return model
 
 def predict(feature_vector) -> float:
@@ -125,10 +137,8 @@ def _should_reset_confirmed_state(device_id: str, timestamp: str, state: dict) -
         session_row = cursor.fetchone()
 
     if session_row and session_row["reset_time"]:
-        try:
+        with contextlib.suppress(ValueError):
             return current_dt >= datetime.fromisoformat(session_row["reset_time"])
-        except ValueError:
-            pass
 
     return current_dt - onset_dt >= timedelta(hours=16)
 
@@ -164,6 +174,73 @@ def process_log(device_id: str, timestamp: str, sleep_prob: float):
     return {"sleep_prob": sleep_prob, "state": "TRACKING", "onset_time": state["onset_time"], "consecutive_above_threshold": state["consecutive"]}
 
 # ======================== Routes ========================
+
+@router.post("/model/upload", summary="Hot-swap the sleep model")
+async def upload_model(file: UploadFile = File(...)):
+    """
+    Upload a new sleep_model.pkl produced by the Colab training notebook.
+    The file is validated, saved to the canonical path, and hot-reloaded
+    into memory — no server restart required.
+    """
+    if not file.filename or not file.filename.endswith(".pkl"):
+        raise HTTPException(status_code=400, detail="Only .pkl files are accepted.")
+
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_path = MODEL_FILE.with_suffix(".tmp")
+
+    try:
+        # Write to a temp file first so an interrupted upload never corrupts the live model
+        with open(tmp_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+        # Validate the file is a loadable model before committing
+        try:
+            candidate = joblib.load(tmp_path)
+        except Exception as exc:
+            tmp_path.unlink(missing_ok=True)
+            raise HTTPException(status_code=422, detail=f"File is not a valid scikit-learn model: {exc}") from exc
+
+        # Commit
+        shutil.move(str(tmp_path), str(MODEL_FILE))
+
+        # Hot-reload into RAM
+        global model, model_load_attempted, _model_source_path
+        model = candidate
+        model_load_attempted = True
+        _model_source_path = str(MODEL_FILE)
+
+        model_type = type(candidate).__name__
+        logging.info("Sleep model hot-swapped: %s loaded from upload.", model_type)
+
+        return {
+            "status": "ok",
+            "message": "Model uploaded and activated successfully.",
+            "model_type": model_type,
+            "saved_to": str(MODEL_FILE),
+        }
+    finally:
+        tmp_path.unlink(missing_ok=True)  # clean up if something went wrong
+
+
+@router.get("/model/info", summary="Current model status")
+def model_info():
+    """Return metadata about the currently loaded sleep model."""
+    m = get_model()   # loads lazily if not yet attempted
+    if m is None:
+        return {
+            "loaded": False,
+            "model_type": None,
+            "source_path": None,
+            "model_file_exists": MODEL_FILE.exists(),
+        }
+    return {
+        "loaded": True,
+        "model_type": type(m).__name__,
+        "source_path": _model_source_path,
+        "model_file_exists": MODEL_FILE.exists(),
+    }
+
+
 @router.post("/logs/raw.log")
 def create_log(payload: LogPayload):
     payload_json = payload.model_dump_json()
