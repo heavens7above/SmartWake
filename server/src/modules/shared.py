@@ -60,16 +60,40 @@ def get_db_url() -> str:
     # Railway sometimes emits postgres:// — psycopg2 requires postgresql://
     return url.replace("postgres://", "postgresql://", 1)
 
+from psycopg2 import pool
+import logging
+
+DB_POOL = None
+
+def init_pool():
+    global DB_POOL
+    if DB_POOL is None:
+        logging.info("Initializing PostgreSQL ThreadedConnectionPool (min=1, max=20)")
+        DB_POOL = psycopg2.pool.ThreadedConnectionPool(
+            minconn=1, maxconn=20, dsn=get_db_url(), cursor_factory=psycopg2.extras.RealDictCursor
+        )
+
+def close_pool():
+    global DB_POOL
+    if DB_POOL is not None:
+        logging.info("Closing PostgreSQL Connection Pool")
+        DB_POOL.closeall()
+        DB_POOL = None
+
 @contextmanager
 def get_db():
-    conn = psycopg2.connect(get_db_url(), cursor_factory=psycopg2.extras.RealDictCursor)
+    if DB_POOL is None:
+        raise RuntimeError("Database pool not initialized. Call init_pool() on startup.")
+    
+    conn = DB_POOL.getconn()
     try:
         yield conn
+        conn.commit() # Ensure stray inserts are committed before returning to pool
     except Exception:
         conn.rollback()
         raise
     finally:
-        conn.close()
+        DB_POOL.putconn(conn)
 
 def init_db():
     with get_db() as conn:

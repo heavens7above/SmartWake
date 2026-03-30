@@ -23,6 +23,12 @@ async def get_api_key(api_key_header: str = Security(api_key_header)):
 
 from src.modules import shared, sleep, alarms, dashboards, termux
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S%z"
+)
+
 def _sweep_garbage():
     """Remove compiled Python caches."""
     with suppress(Exception):
@@ -31,10 +37,14 @@ def _sweep_garbage():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure database is initialized using the provided DATABASE_URL
+    # Setup App Architecture For Production
     _sweep_garbage()
+    shared.init_pool()
     shared.init_db()
     yield
+    
+    # Teardown Gracefully
+    shared.close_pool()
     _sweep_garbage()
 
 
