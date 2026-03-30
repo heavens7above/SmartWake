@@ -70,7 +70,10 @@ def predict(feature_vector) -> float:
     m = get_model()
     if m is None:
         return 0.0
-    probs = m.predict_proba(feature_vector)
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        probs = m.predict_proba(feature_vector)
     return float(probs[0][1])
 
 def build_feature_vector(rows: list) -> np.ndarray:
