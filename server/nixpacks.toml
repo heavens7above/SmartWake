@@ -2,15 +2,13 @@
 python = "3.11"
 
 [variables]
-# Secure boundaries for Python caches
 PYTHONDONTWRITEBYTECODE = "1"
 PYTHONUNBUFFERED = "1"
 # Note: Do NOT hardcode PORT here — Railway injects it automatically at runtime.
 
 [phases.install]
-# Ensure bleeding edge Pip capabilities before hitting our specific bindings
 cmds = ["python -m pip install --upgrade pip", "pip install -r requirements.txt"]
 
 [start]
-# Wrap in sh -c so $PORT shell variable expansion works correctly
-cmd = "sh -c 'uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}'"
+# 2>&1 redirects uvicorn's stderr to stdout so Railway shows logs as blue info, not red error
+cmd = "sh -c 'uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} 2>&1'"
