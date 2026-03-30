@@ -2,7 +2,7 @@ import sqlite3
 import os
 import math
 from contextlib import contextmanager
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 # ======================== Server Config ========================
@@ -27,22 +27,28 @@ def compute_magnitude(x: float, y: float, z: float) -> float:
 
 # ======================== Schemas ========================
 class LogPayload(BaseModel):
-    device_id: str
+    # CODEX-FIX: Reject empty device IDs so bad clients cannot poison the log table with anonymous rows.
+    device_id: str = Field(min_length=1)
     timestamp: datetime
     charging: bool
-    battery_level: int
+    # CODEX-FIX: Constrain battery percentages to valid values instead of storing impossible numbers.
+    battery_level: int = Field(ge=0, le=100)
     accel_x: float
     accel_y: float
     accel_z: float
-    notification_count: int
+    # CODEX-FIX: Reject negative notification counts that would corrupt derived feature calculations.
+    notification_count: int = Field(ge=0)
 
 class WakeTimePayload(BaseModel):
-    device_id: str
+    # CODEX-FIX: Reject empty device IDs so wake-time updates always target a concrete device.
+    device_id: str = Field(min_length=1)
     wake_deadline: datetime
 
 class RatingPayload(BaseModel):
-    device_id: str
-    quality_rating: int
+    # CODEX-FIX: Reject empty device IDs so ratings never update an unintended latest session.
+    device_id: str = Field(min_length=1)
+    # CODEX-FIX: Clamp sleep ratings to the supported 1-5 star range before they reach SQLite.
+    quality_rating: int = Field(ge=1, le=5)
 
 # ======================== Database ========================
 def get_db_path():

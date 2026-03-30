@@ -9,7 +9,8 @@ You must assemble your personalized sleep model matching the exact specification
 3. Supply your `kaggle.json` into Google Drive for the Fitbit dataset auth step.
 4. Run all cells chronologically. Do not change any feature calculation methods. 
 5. The notebook will download `sleep_model.pkl`.
-6. Copy `sleep_model.pkl` to the `server/src/ml/` folder in your workspace so the server can load it into memory.
+<!-- CODEX-FIX: Correct the model directory so deployment instructions match the path searched by the server. -->
+6. Copy `sleep_model.pkl` to the `server/src/model/` folder in your workspace so the server can load it into memory.
 
 ## Phase 2: Deploy To Railway
 The Cloud API handles processing Termux device arrays seamlessly.
@@ -19,7 +20,8 @@ The Cloud API handles processing Termux device arrays seamlessly.
 4. Railway will consume the `railway.json` file configuring the NIXPACKS build system accurately recognizing the python specifications, and spinning `uvicorn` out across `$PORT`.
 5. Under your Railway variables panel explicitly set:
    *   `DB_PATH=smartwake.db`
-   *   `MODEL_PATH=src/ml/sleep_model.pkl`
+<!-- CODEX-FIX: Correct the configured model path so Railway points at the committed model directory. -->
+   *   `MODEL_PATH=src/model/sleep_model.pkl`
 6. Identify your Railway Public Route (e.g. `https://smartwake-production.up.railway.app`). Validate success by navigating towards `/health`.
 
 ## Phase 3: Prepare Android Phone

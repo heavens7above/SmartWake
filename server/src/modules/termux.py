@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import PlainTextResponse
 from src.modules.shared import BASE_URL
@@ -7,7 +8,8 @@ router = APIRouter(tags=["Deployment"])
 
 # Resolved from the app's working directory (/app in container, server/ locally).
 # server/termux/ is committed into the image so it's always present.
-TERMUX_PATH = os.path.join(os.getcwd(), "termux")
+# CODEX-FIX: Resolve payloads relative to this module so routes still work when uvicorn is launched from a different cwd.
+TERMUX_PATH = Path(__file__).resolve().parents[2] / "termux"
 
 def _resolve_base_url(request: Request) -> str:
     """
@@ -101,12 +103,13 @@ def get_termux_file(request: Request, filename: str):
     if filename not in allowed_files:
         raise HTTPException(status_code=404, detail="File not found")
 
-    file_path = os.path.join(TERMUX_PATH, filename)
+    file_path = TERMUX_PATH / filename
 
-    if not os.path.exists(file_path):
+    if not file_path.exists():
         raise HTTPException(status_code=404, detail="Payload file missing on server")
 
-    with open(file_path, "r") as f:
+    # CODEX-FIX: Read payload scripts as UTF-8 explicitly so injected files are served consistently across hosts.
+    with file_path.open("r", encoding="utf-8") as f:
         content = f.read()
 
     # Inject the live BASE_URL so the phone client is auto-configured

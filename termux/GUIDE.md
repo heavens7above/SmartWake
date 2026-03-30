@@ -18,7 +18,8 @@ Also install the companion app **Termux:API**:
 curl -sL https://smartwake.up.railway.app/install | bash
 ```
 
-> Replace `your-railway-url.up.railway.app` with your actual Railway deployment URL.
+<!-- CODEX-FIX: Clarify that only the host in the sample command changes because the install route already injects the rest of the config. -->
+> Replace only the domain in the sample command with your actual Railway deployment URL.
 
 That single command will automatically:
 - Update Termux package repositories

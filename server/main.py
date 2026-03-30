@@ -4,13 +4,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-from fastapi.security.api_key import APIKeyHeader
+from fastapi.responses import Response
 from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = os.getenv("API_KEY", "sk_live_smartwake_93f8e21a")
+# CODEX-FIX: Remove the insecure hardcoded API key fallback so deployments fail fast when auth is not configured.
+API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    raise RuntimeError("API_KEY environment variable must be set")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
 
 async def get_api_key(api_key_header: str = Security(api_key_header)):
@@ -91,8 +93,6 @@ def health_check():
         "service": "SmartWake Sleep Intelligence Server",
         "base_url": BASE_URL,
     }
-
-from fastapi.responses import Response
 
 @app.get("/favicon.ico", include_in_schema=False)
 @app.get("/apple-touch-icon.png", include_in_schema=False)

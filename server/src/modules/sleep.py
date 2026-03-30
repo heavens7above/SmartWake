@@ -2,6 +2,8 @@ import os
 import joblib
 import logging
 import numpy as np
+from pathlib import Path
+from datetime import datetime, timedelta
 from fastapi import APIRouter
 from src.modules.shared import LogPayload, get_db, compute_magnitude, cyclical_encode
 from src.modules.alarms import schedule_alarm
@@ -10,13 +12,46 @@ router = APIRouter()
 
 # ======================== ML Inference & Features ========================
 model = None
+model_load_attempted = False
+
+# CODEX-FIX: Search the known model locations once so config/path drift does not silently disable inference.
+def _candidate_model_paths():
+    configured = os.getenv("MODEL_PATH")
+    candidates = []
+    if configured:
+        candidates.append(Path(configured))
+    candidates.extend([
+        Path("src/model/sleep_model.pkl"),
+        Path("src/ml/sleep_model.pkl"),
+        Path("src/sleep_model.pkl"),
+    ])
+    unique_candidates = []
+    seen = set()
+    for candidate in candidates:
+        resolved = str(candidate)
+        if resolved not in seen:
+            seen.add(resolved)
+            unique_candidates.append(candidate)
+    return unique_candidates
 
 def get_model():
-    global model
-    if model is None:
-        model_path = os.getenv("MODEL_PATH", "src/sleep_model.pkl") 
-        if os.path.exists(model_path):
+    global model, model_load_attempted
+    if model_load_attempted:
+        return model
+
+    model_load_attempted = True
+    for model_path in _candidate_model_paths():
+        if not model_path.exists():
+            continue
+        try:
             model = joblib.load(model_path)
+            logging.info("Loaded sleep model from %s", model_path)
+            break
+        except Exception:
+            logging.exception("Failed to load sleep model from %s", model_path)
+
+    if model is None:
+        logging.warning("Sleep model not found; inference will return 0.0 until MODEL_PATH is configured.")
     return model
 
 def predict(feature_vector) -> float:
@@ -63,10 +98,48 @@ def build_feature_vector(rows: list) -> np.ndarray:
 onset_state = {}
 THRESHOLD = 0.75
 
+# CODEX-FIX: Reset stale confirmed sessions so one night's onset does not keep every later log permanently stuck in CONFIRMED.
+def _should_reset_confirmed_state(device_id: str, timestamp: str, state: dict) -> bool:
+    onset_time = state.get("onset_time")
+    if not onset_time:
+        return True
+
+    try:
+        current_dt = datetime.fromisoformat(timestamp)
+        onset_dt = datetime.fromisoformat(onset_time)
+    except ValueError:
+        return True
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT COALESCE(alarm_time, wake_deadline) AS reset_time
+            FROM sleep_sessions
+            WHERE device_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+            ''',
+            (device_id,),
+        )
+        session_row = cursor.fetchone()
+
+    if session_row and session_row["reset_time"]:
+        try:
+            return current_dt >= datetime.fromisoformat(session_row["reset_time"])
+        except ValueError:
+            pass
+
+    return current_dt - onset_dt >= timedelta(hours=16)
+
 def process_log(device_id: str, timestamp: str, sleep_prob: float):
     if device_id not in onset_state:
         onset_state[device_id] = {"consecutive": 0, "confirmed": False, "onset_time": None}
     state = onset_state[device_id]
+
+    if state["confirmed"] and _should_reset_confirmed_state(device_id, timestamp, state):
+        state = {"consecutive": 0, "confirmed": False, "onset_time": None}
+        onset_state[device_id] = state
     
     if state["confirmed"]:
         return {"sleep_prob": sleep_prob, "state": "CONFIRMED", "onset_time": state["onset_time"], "consecutive_above_threshold": state["consecutive"]}
@@ -99,7 +172,8 @@ def create_log(payload: LogPayload):
     # Forcefully append payload to local physical debug text trace
     try:
         os.makedirs("logs", exist_ok=True)
-        with open("logs/raw.log", "a") as f:
+        # CODEX-FIX: Write logs with an explicit encoding so debug capture is stable across host locales.
+        with open("logs/raw.log", "a", encoding="utf-8") as f:
             f.write(payload_json + "\\n")
     except Exception as e:
         logging.warning(f"Could not write to logs/raw.log: {e}")

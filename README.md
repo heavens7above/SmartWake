@@ -29,7 +29,8 @@ Requires **Android 5.0+ (API 21)**. Pair with a running SmartWake server for ful
 
 - **Zero-Trust Cloud Inference**: A centralized Python FastAPI analytics engine hosted behind robust Header-Level API authentication dependencies. It actively intercepts JSON payloads evaluating incoming Termux accelerometer trajectories against a pre-compiled `GradientBoostingClassifier`.
 - **Untethered Android Polling**: Persistent native OS workers bypassing strict Android Doze cycles. Utilizing `termux-api` they poll battery, movement, and notification data blindly transmitting to the web architecture before activating localized mp3 alarms!
-- **Wireless ADB Auto-Injection**: A single robust `deploy_adb.sh` shell script leveraging native Android Debug Bridge features unlocking user screens natively, establishing file paths, and actively "typing" the initial Termux launch sequences!
+<!-- CODEX-FIX: Replace the removed ADB workflow with the current server-hosted Termux installer so setup instructions match the repo. -->
+- **One-Line Termux Bootstrap**: A hosted `/install` script downloads the current `logger.py`, `alarm.py`, and `start.sh` payloads directly onto the phone without any ADB step.
 
 ## Documentation
 
@@ -42,5 +43,6 @@ For deep-dives into executing the `sqlite3` layout patterns or setting up your l
 
 1. Edit the API token string alongside `server/.env`.
 2. Push your localized repository into GitHub binding it onto Railway. Nixpacks will utilize `railway.json` spinning internal Python instances perfectly!
-3. Evaluate your own sleep patterns compiling `train/Train.ipynb` and deploy the output binary file towards `server/src/ml/sleep_model.pkl`.
-4. Spin up Termux natively on your Android device and execute `bash termux/deploy_adb.sh` over your workstation resolving all app deployment mechanics dynamically!
+<!-- CODEX-FIX: Correct the documented model path and bootstrap command so users follow the current runtime layout. -->
+3. Evaluate your own sleep patterns compiling `train/Train.ipynb` and deploy the output binary file towards `server/src/model/sleep_model.pkl`.
+4. On your Android device, open Termux and run `curl -sL https://smartwake.up.railway.app/install | bash`, then start the workers with `cd ~/smartwake && bash start.sh`.

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from src.modules.shared import RatingPayload, get_db
 
 router = APIRouter()
@@ -37,5 +37,7 @@ def submit_rating(payload: RatingPayload):
         updated = cursor.rowcount > 0
         conn.commit()
         
-    if updated: return {"status": "success", "message": "Rating updated."}
-    else: return {"status": "error", "message": "No session found."}
+    if updated:
+        return {"status": "success", "message": "Rating updated."}
+    # CODEX-FIX: Return 404 when no session exists so the client does not treat a failed rating write as success.
+    raise HTTPException(status_code=404, detail="No session found.")

@@ -19,7 +19,8 @@ Railway will automatically detect these bindings natively the moment you initial
 
 ## ⚖️ Step 2: Global Environment Variables
 Inside your Railway Container **Variables** tab, you must manually inject your Zero-Trust locks!
-- `API_KEY` = `sk_live_smartwake_93f8e21a` *(Required! Your Android tracker will be locked out without this)* 
+<!-- CODEX-FIX: Replace the committed example secret with a generated value because the server now requires an explicit environment key. -->
+- `API_KEY` = `generate-a-random-secret-and-reuse-it-in-your-clients` *(Required. Set your own value and keep the same one in the app/Termux settings.)* 
 - `PORT` = `8000` *(Usually auto-assigned by Railway, but enforcing it ensures absolute connectivity)*
 
 ## 🧱 Step 3: SQLite Persistent Volume
