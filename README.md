@@ -1,7 +1,7 @@
 # SmartWake
 
 <p align="center">
-  <a href="https://github.com/heavens7above/SmartWake/SmartWakeApp/build/app/outputs/flutter-apk/app-release.apk">
+  <a href="https://github.com/heavens7above/SmartWake/releases/download/v1.0.0/app-release.apk">
     <img src="https://img.shields.io/badge/⬇_Download_APK-v1.0.0-7B5CFF?style=for-the-badge&logo=android&logoColor=white" alt="Download APK"/>
   </a>
   &nbsp;
@@ -16,7 +16,7 @@ SmartWake is a strict, production-ready ML-powered smart alarm engine designed t
 
 > **Latest release:** [v1.0.0](https://github.com/heavens7above/SmartWake/releases/tag/v1.0.0)
 
-1. [**Download SmartWake-v1.0.0.apk**](https://github.com/heavens7above/SmartWake/releases/download/v1.0.0/SmartWake-v1.0.0.apk)
+1. [**Download SmartWake-v1.0.0.apk**](https://github.com/heavens7above/SmartWake/releases/download/v1.0.0/app-release.apk)
 2. On your Android device, go to **Settings → Security → Install unknown apps** and allow your browser/Files app
 3. Open the downloaded APK and tap **Install**
 4. Launch SmartWake, grant notification + battery optimisation permissions, and tap **Start Monitoring**
