@@ -245,15 +245,6 @@ def model_info():
 def create_log(payload: LogPayload):
     payload_json = payload.model_dump_json()
     logging.info(f"Incoming Payload: {payload_json}")
-    
-    # Forcefully append payload to local physical debug text trace
-    try:
-        os.makedirs("logs", exist_ok=True)
-        # CODEX-FIX: Write logs with an explicit encoding so debug capture is stable across host locales.
-        with open("logs/raw.log", "a", encoding="utf-8") as f:
-            f.write(payload_json + "\\n")
-    except Exception as e:
-        logging.warning(f"Could not write to logs/raw.log: {e}")
         
     magnitude = compute_magnitude(payload.accel_x, payload.accel_y, payload.accel_z)
     timestamp_str = payload.timestamp.isoformat()
