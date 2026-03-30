@@ -44,5 +44,5 @@ For deep-dives into executing the `sqlite3` layout patterns or setting up your l
 1. Edit the API token string alongside `server/.env`.
 2. Push your localized repository into GitHub binding it onto Railway. Nixpacks will utilize `railway.json` spinning internal Python instances perfectly!
 <!-- CODEX-FIX: Correct the documented model path and bootstrap command so users follow the current runtime layout. -->
-3. Evaluate your own sleep patterns compiling `train/Train.ipynb` and deploy the output binary file towards `server/src/model/sleep_model.pkl`.
+3. Evaluate your own sleep patterns compiling [`train/Train.ipynb`](https://colab.research.google.com/drive/1srubKtguThzFZl7F3N0CdeaHipO196ia?usp=sharing) and deploy the output binary file towards `server/src/model/sleep_model.pkl`.
 4. On your Android device, open Termux and run `curl -sL https://smartwake.up.railway.app/install | bash`, then start the workers with `cd ~/smartwake && bash start.sh`.
