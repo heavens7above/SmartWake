@@ -7,4 +7,6 @@ numpy
 pandas
 python-dotenv
 python-multipart
-psycopg2-binarygunicorn==21.2.0
+psycopg2-binary
+gunicorn==21.2.0
+
