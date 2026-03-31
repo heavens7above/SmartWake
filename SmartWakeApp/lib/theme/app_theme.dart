@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color background  = Color(0xFF080C18);
-  static const Color surface     = Color(0xFF0F1628);
-  static const Color surfaceAlt  = Color(0xFF141E38);
-  static const Color primary     = Color(0xFF7B5CFF);
-  static const Color primaryDim  = Color(0xFF3D2E88);
-  static const Color cyan        = Color(0xFF00D4FF);
-  static const Color teal        = Color(0xFF00C9A7);
-  static const Color pink        = Color(0xFFFF6B9D);
-  static const Color success     = Color(0xFF00E676);
-  static const Color warning     = Color(0xFFFFB74D);
+  static const Color background = Color(0xFF080C18);
+  static const Color surface = Color(0xFF0F1628);
+  static const Color surfaceAlt = Color(0xFF141E38);
+  static const Color primary = Color(0xFF7B5CFF);
+  static const Color primaryDim = Color(0xFF3D2E88);
+  static const Color cyan = Color(0xFF00D4FF);
+  static const Color teal = Color(0xFF00C9A7);
+  static const Color pink = Color(0xFFFF6B9D);
+  static const Color success = Color(0xFF00E676);
+  static const Color warning = Color(0xFFFFB74D);
   static const Color textPrimary = Color(0xFFE8E8FF);
-  static const Color textSecond  = Color(0xFF8B9CC8);
-  static const Color border      = Color(0xFF1E2D54);
+  static const Color textSecond = Color(0xFF8B9CC8);
+  static const Color border = Color(0xFF1E2D54);
 
   static ThemeData get darkTheme => ThemeData(
     brightness: Brightness.dark,
@@ -51,7 +51,11 @@ class AppTheme {
       }),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const TextStyle(color: primary, fontSize: 11, fontWeight: FontWeight.w600);
+          return const TextStyle(
+            color: primary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          );
         }
         return const TextStyle(color: Color(0xFF3A4A6A), fontSize: 11);
       }),
@@ -64,7 +68,11 @@ class AppTheme {
         elevation: 8,
         shadowColor: primary.withValues(alpha: 0.4),
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+        textStyle: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+        ),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(

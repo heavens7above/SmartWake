@@ -63,10 +63,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _checking = false;
       _healthOk = ok;
     });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok ? '✅ Server reachable' : '❌ Could not reach server'),
-      backgroundColor: ok ? AppTheme.teal : AppTheme.pink,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? '✅ Server reachable' : '❌ Could not reach server'),
+        backgroundColor: ok ? AppTheme.teal : AppTheme.pink,
+      ),
+    );
   }
 
   Future<void> _resetDevice() async {
@@ -74,19 +76,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text('Reset Device ID?',
-            style: TextStyle(color: AppTheme.textPrimary)),
+        title: const Text(
+          'Reset Device ID?',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
         content: const Text(
-            'This will generate a new device ID. Your history on the server will be unlinked.',
-            style: TextStyle(color: AppTheme.textSecond)),
+          'This will generate a new device ID. Your history on the server will be unlinked.',
+          style: TextStyle(color: AppTheme.textSecond),
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('CANCEL')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
           ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.pink),
-              child: const Text('RESET')),
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.pink),
+            child: const Text('RESET'),
+          ),
         ],
       ),
     );
@@ -107,14 +114,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-              const Text('SETTINGS',
-                  style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 2)),
-              const Text('Server & device configuration',
-                  style: TextStyle(color: AppTheme.textSecond, fontSize: 13)),
+              const Text(
+                'SETTINGS',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 2,
+                ),
+              ),
+              const Text(
+                'Server & device configuration',
+                style: TextStyle(color: AppTheme.textSecond, fontSize: 13),
+              ),
               const SizedBox(height: 24),
               Expanded(
                 child: SingleChildScrollView(
@@ -124,32 +136,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('CONNECTION',
-                                style: TextStyle(
-                                    color: AppTheme.textSecond,
-                                    fontSize: 11,
-                                    letterSpacing: 1.5)),
+                            const Text(
+                              'CONNECTION',
+                              style: TextStyle(
+                                color: AppTheme.textSecond,
+                                fontSize: 11,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
                             const SizedBox(height: 16),
                             TextField(
                               controller: _urlCtrl,
-                              style:
-                                  const TextStyle(color: AppTheme.textPrimary),
+                              style: const TextStyle(
+                                color: AppTheme.textPrimary,
+                              ),
                               decoration: const InputDecoration(
                                 labelText: 'Server Base URL',
-                                prefixIcon: Icon(Icons.cloud_outlined,
-                                    color: AppTheme.primary, size: 20),
+                                prefixIcon: Icon(
+                                  Icons.cloud_outlined,
+                                  color: AppTheme.primary,
+                                  size: 20,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _apiCtrl,
                               obscureText: true,
-                              style:
-                                  const TextStyle(color: AppTheme.textPrimary),
+                              style: const TextStyle(
+                                color: AppTheme.textPrimary,
+                              ),
                               decoration: const InputDecoration(
                                 labelText: 'API Key',
-                                prefixIcon: Icon(Icons.key_outlined,
-                                    color: AppTheme.primary, size: 20),
+                                prefixIcon: Icon(
+                                  Icons.key_outlined,
+                                  color: AppTheme.primary,
+                                  size: 20,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -162,22 +185,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         width: 16,
                                         height: 16,
                                         child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: AppTheme.cyan))
+                                          strokeWidth: 2,
+                                          color: AppTheme.cyan,
+                                        ),
+                                      )
                                     : Icon(
                                         _healthOk
                                             ? Icons.check_circle_outline
                                             : Icons.wifi,
-                                        color: AppTheme.cyan),
+                                        color: AppTheme.cyan,
+                                      ),
                                 label: Text(
-                                    _checking
-                                        ? 'Checking...'
-                                        : 'Test Connection',
-                                    style:
-                                        const TextStyle(color: AppTheme.cyan)),
+                                  _checking ? 'Checking...' : 'Test Connection',
+                                  style: const TextStyle(color: AppTheme.cyan),
+                                ),
                                 style: OutlinedButton.styleFrom(
-                                    side:
-                                        const BorderSide(color: AppTheme.cyan)),
+                                  side: const BorderSide(color: AppTheme.cyan),
+                                ),
                               ),
                             ),
                           ],
@@ -191,29 +215,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('DEVICE',
-                                style: TextStyle(
-                                    color: AppTheme.textSecond,
-                                    fontSize: 11,
-                                    letterSpacing: 1.5)),
+                            const Text(
+                              'DEVICE',
+                              style: TextStyle(
+                                color: AppTheme.textSecond,
+                                fontSize: 11,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
                             const SizedBox(height: 16),
                             TextField(
                               controller: _devCtrl,
                               style: const TextStyle(
-                                  color: AppTheme.textPrimary, fontSize: 12),
+                                color: AppTheme.textPrimary,
+                                fontSize: 12,
+                              ),
                               decoration: InputDecoration(
                                 labelText: 'Device ID',
-                                prefixIcon: const Icon(Icons.smartphone,
-                                    color: AppTheme.cyan, size: 20),
+                                prefixIcon: const Icon(
+                                  Icons.smartphone,
+                                  color: AppTheme.cyan,
+                                  size: 20,
+                                ),
                                 suffixIcon: IconButton(
-                                  icon: const Icon(Icons.copy,
-                                      color: AppTheme.textSecond, size: 18),
+                                  icon: const Icon(
+                                    Icons.copy,
+                                    color: AppTheme.textSecond,
+                                    size: 18,
+                                  ),
                                   onPressed: () {
                                     Clipboard.setData(
-                                        ClipboardData(text: _devCtrl.text));
+                                      ClipboardData(text: _devCtrl.text),
+                                    );
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                          content: Text('Device ID copied')),
+                                        content: Text('Device ID copied'),
+                                      ),
                                     );
                                   },
                                 ),
@@ -222,10 +259,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const SizedBox(height: 12),
                             TextButton.icon(
                               onPressed: _resetDevice,
-                              icon: const Icon(Icons.refresh,
-                                  color: AppTheme.pink, size: 18),
-                              label: const Text('Reset Device ID',
-                                  style: TextStyle(color: AppTheme.pink)),
+                              icon: const Icon(
+                                Icons.refresh,
+                                color: AppTheme.pink,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Reset Device ID',
+                                style: TextStyle(color: AppTheme.pink),
+                              ),
                             ),
                           ],
                         ),
@@ -237,12 +279,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: _save,
-                          icon:
-                              Icon(_saved ? Icons.check : Icons.save_outlined),
+                          icon: Icon(
+                            _saved ? Icons.check : Icons.save_outlined,
+                          ),
                           label: Text(_saved ? 'SAVED!' : 'SAVE SETTINGS'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                _saved ? AppTheme.teal : AppTheme.primary,
+                            backgroundColor: _saved
+                                ? AppTheme.teal
+                                : AppTheme.primary,
                           ),
                         ),
                       ),
@@ -250,15 +294,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 24),
 
                       // Version info
-                      const Text('SmartWake  v1.0.0',
-                          style: TextStyle(
-                              color: AppTheme.border,
-                              fontSize: 11,
-                              letterSpacing: 1)),
+                      const Text(
+                        'SmartWake  v1.0.0',
+                        style: TextStyle(
+                          color: AppTheme.border,
+                          fontSize: 11,
+                          letterSpacing: 1,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      const Text('ML-powered sleep intelligence',
-                          style:
-                              TextStyle(color: AppTheme.border, fontSize: 10)),
+                      const Text(
+                        'ML-powered sleep intelligence',
+                        style: TextStyle(color: AppTheme.border, fontSize: 10),
+                      ),
                     ],
                   ),
                 ),

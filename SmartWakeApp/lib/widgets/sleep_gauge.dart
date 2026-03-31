@@ -29,7 +29,9 @@ class SleepGauge extends StatelessWidget {
       height: 180,
       child: CustomPaint(
         painter: _GaugePainter(
-            probability: _normalizedProbability, arcColor: _arcColor),
+          probability: _normalizedProbability,
+          arcColor: _arcColor,
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

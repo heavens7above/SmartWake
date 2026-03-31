@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:battery_plus/battery_plus.dart';
@@ -22,13 +23,15 @@ class SleepMonitorHandler extends TaskHandler {
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
-    _accelSub = userAccelerometerEventStream(
-      samplingPeriod: SensorInterval.normalInterval,
-    ).listen((e) {
-      _x = e.x;
-      _y = e.y;
-      _z = e.z;
-    });
+    DartPluginRegistrant.ensureInitialized();
+    _accelSub =
+        userAccelerometerEventStream(
+          samplingPeriod: SensorInterval.normalInterval,
+        ).listen((e) {
+          _x = e.x;
+          _y = e.y;
+          _z = e.z;
+        });
   }
 
   @override
@@ -122,32 +125,27 @@ class SleepMonitorHandler extends TaskHandler {
       final apiKey = await StorageService.getApiKey();
       final baseUrl = await StorageService.getBaseUrl();
 
-      final res = await http.get(
-        Uri.parse('$baseUrl/alarm-status?device_id=$deviceId'),
-        headers: {'X-API-Key': apiKey},
-      ).timeout(const Duration(seconds: 10));
+      final res = await http
+          .get(
+            Uri.parse('$baseUrl/alarm-status?device_id=$deviceId'),
+            headers: {'X-API-Key': apiKey},
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (res.statusCode != 200) return;
       final data = jsonDecode(res.body) as Map<String, dynamic>;
 
-      if (data['alarm_scheduled'] == true && data['alarm_time'] != null) {
-        final alarmDt = DateTime.tryParse(data['alarm_time']);
-        final now = DateTime.now();
-        final todayKey = '${now.year}-${now.month}-${now.day}';
-
-        if (alarmDt != null &&
-            now.isAfter(alarmDt) &&
-            _lastAlarmDate != todayKey) {
-          _lastAlarmDate = todayKey;
-          FlutterForegroundTask.sendDataToMain({
-            'type': 'alarm',
-            'alarm_time': data['alarm_time'],
-          });
-          await FlutterForegroundTask.updateService(
-            notificationTitle: '⏰ Wake Up — SmartWake',
-            notificationText: 'Optimal sleep cycle complete. Rise and shine!',
-          );
-        }
+      // Server tells us definitively whether to fire
+      if (data['should_fire'] == true && _lastAlarmDate != data['alarm_time']) {
+        _lastAlarmDate = data['alarm_time'] as String?;
+        FlutterForegroundTask.sendDataToMain({
+          'type': 'alarm',
+          'alarm_time': data['alarm_time'],
+        });
+        await FlutterForegroundTask.updateService(
+          notificationTitle: '⏰ Wake Up — SmartWake',
+          notificationText: 'Optimal sleep cycle complete. Rise and shine!',
+        );
       }
     } catch (_) {}
   }
@@ -164,8 +162,9 @@ class MonitorService {
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
       ),
-      iosNotificationOptions:
-          const IOSNotificationOptions(showNotification: false),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: false,
+      ),
       foregroundTaskOptions: ForegroundTaskOptions(
         eventAction: ForegroundTaskEventAction.repeat(5 * 60 * 1000), // 5 min
         autoRunOnBoot: false,

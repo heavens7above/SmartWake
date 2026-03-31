@@ -10,7 +10,8 @@ class StarField extends StatefulWidget {
   State<StarField> createState() => _StarFieldState();
 }
 
-class _StarFieldState extends State<StarField> with SingleTickerProviderStateMixin {
+class _StarFieldState extends State<StarField>
+    with SingleTickerProviderStateMixin {
   late final List<_Star> _stars;
   late final AnimationController _ctrl;
 
@@ -18,15 +19,20 @@ class _StarFieldState extends State<StarField> with SingleTickerProviderStateMix
   void initState() {
     super.initState();
     final rng = Random(42);
-    _stars = List.generate(120, (_) => _Star(
-      x:       rng.nextDouble(),
-      y:       rng.nextDouble(),
-      radius:  rng.nextDouble() * 1.4 + 0.4,
-      phase:   rng.nextDouble() * 2 * pi,
-      speed:   rng.nextDouble() * 0.6 + 0.4,
-    ));
-    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 4))
-      ..repeat();
+    _stars = List.generate(
+      120,
+      (_) => _Star(
+        x: rng.nextDouble(),
+        y: rng.nextDouble(),
+        radius: rng.nextDouble() * 1.4 + 0.4,
+        phase: rng.nextDouble() * 2 * pi,
+        speed: rng.nextDouble() * 0.6 + 0.4,
+      ),
+    );
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
   }
 
   @override
@@ -55,8 +61,11 @@ class _StarFieldState extends State<StarField> with SingleTickerProviderStateMix
 class _Star {
   final double x, y, radius, phase, speed;
   const _Star({
-    required this.x, required this.y,
-    required this.radius, required this.phase, required this.speed,
+    required this.x,
+    required this.y,
+    required this.radius,
+    required this.phase,
+    required this.speed,
   });
 }
 

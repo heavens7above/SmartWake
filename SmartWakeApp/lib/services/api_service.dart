@@ -5,14 +5,16 @@ import '../models/models.dart';
 
 class ApiService {
   static Future<Map<String, String>> _headers() async => {
-        'Content-Type': 'application/json',
-        'X-API-Key': await StorageService.getApiKey(),
-      };
+    'Content-Type': 'application/json',
+    'X-API-Key': await StorageService.getApiKey(),
+  };
 
   static Future<String> _base() => StorageService.getBaseUrl();
 
-  static Future<Uri> _uri(String path,
-      [Map<String, String>? queryParameters]) async {
+  static Future<Uri> _uri(
+    String path, [
+    Map<String, String>? queryParameters,
+  ]) async {
     final base = Uri.parse(await _base());
     return base.replace(
       path: '${base.path}${path.startsWith('/') ? path : '/$path'}',
@@ -135,6 +137,38 @@ class ApiService {
       final res = await http
           .get(await _uri('/health'))
           .timeout(const Duration(seconds: 8));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── POST /register ─────────────────────────────────────────
+  static Future<bool> registerDevice(String deviceId) async {
+    try {
+      final res = await http
+          .post(
+            await _uri('/register'),
+            headers: await _headers(),
+            body: jsonEncode({'device_id': deviceId}),
+          )
+          .timeout(const Duration(seconds: 10));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── POST /wake-ack ─────────────────────────────────────────
+  static Future<bool> ackWake(String deviceId) async {
+    try {
+      final res = await http
+          .post(
+            await _uri('/wake-ack'),
+            headers: await _headers(),
+            body: jsonEncode({'device_id': deviceId}),
+          )
+          .timeout(const Duration(seconds: 10));
       return res.statusCode == 200;
     } catch (_) {
       return false;

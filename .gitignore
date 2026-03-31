@@ -31,6 +31,10 @@ env/
 # IDEs
 .idea/
 .vscode/
+
+scripts/
+
+
 *.swp
 *.swo
 
@@ -99,5 +103,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-SmartWakeApp/jdk17.tar.gz
 .gradle/
+
+# Machine-specific / auto-generated (do not commit)
+**/local.properties
+**/GeneratedPluginRegistrant.java

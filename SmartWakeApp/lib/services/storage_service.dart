@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
@@ -14,6 +15,9 @@ class StorageService {
   static const _kApiKey = 'api_key';
   static const _kBaseUrl = 'base_url';
   static const _kMonitoring = 'is_monitoring';
+  static const _kAlarmAudioPath = 'alarm_audio_path';
+  static const _kAlarmHour = 'alarm_hour';
+  static const _kAlarmMinute = 'alarm_minute';
 
   static Future<SharedPreferences> get _p => SharedPreferences.getInstance();
 
@@ -23,9 +27,10 @@ class StorageService {
     var id = p.getString(_kDeviceId);
     if (id == null || id.isEmpty) {
       final rng = Random.secure();
-      id = List.generate(16, (_) => rng.nextInt(256))
-          .map((b) => b.toRadixString(16).padLeft(2, '0'))
-          .join();
+      id = List.generate(
+        16,
+        (_) => rng.nextInt(256),
+      ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
       await p.setString(_kDeviceId, id);
     }
     return id;
@@ -71,6 +76,40 @@ class StorageService {
       return;
     }
     await (await _p).setString(_kBaseUrl, normalized);
+  }
+
+  // ── Alarm Audio Path ───────────────────────────────────────
+  static Future<String?> getAlarmAudioPath() async =>
+      (await _p).getString(_kAlarmAudioPath);
+
+  static Future<void> setAlarmAudioPath(String path) async {
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      await (await _p).remove(_kAlarmAudioPath);
+      return;
+    }
+    await (await _p).setString(_kAlarmAudioPath, trimmed);
+  }
+
+  // ── Alarm Time (persistent) ────────────────────────────────
+  static Future<TimeOfDay?> getAlarmTime() async {
+    final p = await _p;
+    final hour = p.getInt(_kAlarmHour);
+    final minute = p.getInt(_kAlarmMinute);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  static Future<void> setAlarmTime(TimeOfDay time) async {
+    final p = await _p;
+    await p.setInt(_kAlarmHour, time.hour);
+    await p.setInt(_kAlarmMinute, time.minute);
+  }
+
+  static Future<void> clearAlarmTime() async {
+    final p = await _p;
+    await p.remove(_kAlarmHour);
+    await p.remove(_kAlarmMinute);
   }
 
   // ── Monitoring state ───────────────────────────────────────

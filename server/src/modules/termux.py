@@ -32,7 +32,7 @@ def get_install_script(request: Request):
     """
     base_url = _resolve_base_url(request)
 
-    script = f"""#!/bin/bash
+    return f"""#!/bin/bash
 echo "[*] Initializing SmartWake Deployment..."
 echo ""
 
@@ -89,7 +89,6 @@ if [ "$IS_TERMUX" = true ]; then
 fi
 echo "=============================================="
 """
-    return script
 
 @router.get("/termux/{filename}", response_class=PlainTextResponse)
 def get_termux_file(request: Request, filename: str):
@@ -111,7 +110,7 @@ def get_termux_file(request: Request, filename: str):
         content = f.read()
 
     # Inject the live BASE_URL so the phone client is auto-configured
-    if filename in ["logger.py", "alarm.py"]:
+    if filename in {"logger.py", "alarm.py"}:
         base_url = _resolve_base_url(request)
         content = content.replace('"https://your-railway-url.up.railway.app"', f'"{base_url}"')
         content = content.replace("'https://your-railway-url.up.railway.app'", f'"{base_url}"')

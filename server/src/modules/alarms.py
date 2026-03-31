@@ -1,6 +1,7 @@
+import logging
 from fastapi import APIRouter
 from datetime import datetime, timedelta
-from src.modules.shared import WakeTimePayload, get_db
+from src.modules.shared import WakeTimePayload, RegisterPayload, WakeAckPayload, get_db
 
 router = APIRouter()
 
@@ -72,6 +73,45 @@ def get_alarm(device_id: str):
     return None
 
 # ======================== Routes ========================
+
+@router.post("/register")
+def register_device(payload: RegisterPayload):
+    """Register a device on first launch. Upserts into device_registry."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO device_registry (device_id)
+            VALUES (%s)
+            ON CONFLICT(device_id) DO UPDATE SET
+            registered_at=CURRENT_TIMESTAMP
+        ''', (payload.device_id,))
+        conn.commit()
+    logging.info("Device registered: %s", payload.device_id)
+    return {"device_id": payload.device_id, "registered": True}
+
+
+@router.post("/wake-ack")
+def wake_ack(payload: WakeAckPayload):
+    """Acknowledge that the user woke up. Marks alarm_fired on the latest session and clears the in-memory alarm."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE sleep_sessions
+            SET alarm_fired = TRUE
+            WHERE id = (
+                SELECT id FROM sleep_sessions
+                WHERE device_id = %s
+                ORDER BY id DESC LIMIT 1
+            )
+        ''', (payload.device_id,))
+        conn.commit()
+
+    # Clear the in-memory alarm so it doesn't re-fire
+    alarm_registry.pop(payload.device_id, None)
+    logging.info("Wake acknowledged for device: %s", payload.device_id)
+    return {"status": "ok", "device_id": payload.device_id}
+
+
 @router.post("/wake-time")
 def set_wake_time(payload: WakeTimePayload):
     latest_onset_time = None
@@ -109,7 +149,30 @@ def set_wake_time(payload: WakeTimePayload):
 @router.get("/alarm-status")
 def get_alarm_status(device_id: str):
     alarm_time = get_alarm(device_id)
+
+    # Determine if the alarm should currently fire on the client
+    should_fire = False
+    if alarm_time:
+        try:
+            alarm_dt = datetime.fromisoformat(alarm_time)
+            now = datetime.now(alarm_dt.tzinfo) if alarm_dt.tzinfo else datetime.now()
+            if now >= alarm_dt:
+                # Check if the session has already been acked
+                with get_db() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT alarm_fired FROM sleep_sessions
+                        WHERE device_id = %s AND alarm_time IS NOT NULL
+                        ORDER BY id DESC LIMIT 1
+                    ''', (device_id,))
+                    row = cursor.fetchone()
+                    if row and not row['alarm_fired']:
+                        should_fire = True
+        except (ValueError, TypeError):
+            pass
+
     return {
         "alarm_scheduled": alarm_time is not None,
-        "alarm_time": alarm_time
+        "alarm_time": alarm_time,
+        "should_fire": should_fire,
     }

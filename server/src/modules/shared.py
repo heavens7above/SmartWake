@@ -42,6 +42,12 @@ class RatingPayload(BaseModel):
     device_id: str = Field(min_length=1)
     quality_rating: int = Field(ge=1, le=5)
 
+class RegisterPayload(BaseModel):
+    device_id: str = Field(min_length=1)
+
+class WakeAckPayload(BaseModel):
+    device_id: str = Field(min_length=1)
+
 # ======================== Database ========================
 def get_db_url() -> str:
     url = os.getenv("DATABASE_URL")

@@ -2,13 +2,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:audioplayers/audioplayers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/sleep_gauge.dart';
 import '../widgets/glow_card.dart';
 import '../widgets/star_field.dart';
 import '../services/monitor_service.dart';
 import '../services/storage_service.dart';
+import 'alarm_trigger_screen.dart';
 
 class SleepScreen extends StatefulWidget {
   const SleepScreen({super.key});
@@ -27,7 +27,6 @@ class _SleepScreenState extends State<SleepScreen>
   int _battery = 0;
   bool _charging = false;
   double _accelMag = 0.0;
-  final _audio = AudioPlayer();
   DateTime? _lastTelemetryErrorToast;
 
   late AnimationController _pulseCtrl;
@@ -36,12 +35,14 @@ class _SleepScreenState extends State<SleepScreen>
   @override
   void initState() {
     super.initState();
-    _pulseCtrl =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2))
-          ..repeat(reverse: true);
-    _pulseAnim = Tween(begin: 1.0, end: 1.12).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _pulseAnim = Tween(
+      begin: 1.0,
+      end: 1.12,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
     FlutterForegroundTask.addTaskDataCallback(_onTaskData);
     _loadState();
   }
@@ -67,8 +68,9 @@ class _SleepScreenState extends State<SleepScreen>
       final nextBattery = data['battery'];
       final nextCharging = data['charging'];
       setState(() {
-        _state =
-            nextState is String && nextState.isNotEmpty ? nextState : _state;
+        _state = nextState is String && nextState.isNotEmpty
+            ? nextState
+            : _state;
         _sleepProb = data['sleep_prob'] is num
             ? (data['sleep_prob'] as num).toDouble()
             : double.tryParse('${data['sleep_prob']}') ?? 0.0;
@@ -82,17 +84,21 @@ class _SleepScreenState extends State<SleepScreen>
         _charging = nextCharging is bool
             ? nextCharging
             : '$nextCharging'.toLowerCase() == 'true';
-        final x =
-            data['accel_x'] is num ? (data['accel_x'] as num).toDouble() : 0.0;
-        final y =
-            data['accel_y'] is num ? (data['accel_y'] as num).toDouble() : 0.0;
-        final z =
-            data['accel_z'] is num ? (data['accel_z'] as num).toDouble() : 0.0;
+        final x = data['accel_x'] is num
+            ? (data['accel_x'] as num).toDouble()
+            : 0.0;
+        final y = data['accel_y'] is num
+            ? (data['accel_y'] as num).toDouble()
+            : 0.0;
+        final z = data['accel_z'] is num
+            ? (data['accel_z'] as num).toDouble()
+            : 0.0;
         _accelMag = math.sqrt(x * x + y * y + z * z);
       });
     } else if (data['type'] == 'alarm') {
       _showAlarmDialog(
-          data['alarm_time'] is String ? data['alarm_time'] as String : null);
+        data['alarm_time'] is String ? data['alarm_time'] as String : null,
+      );
     } else if (data['type'] == 'telemetry_error') {
       final now = DateTime.now();
       if (_lastTelemetryErrorToast == null ||
@@ -104,41 +110,20 @@ class _SleepScreenState extends State<SleepScreen>
         final msg = status != null
             ? 'Telemetry upload failed (HTTP $status)'
             : (error != null ? 'Telemetry error: $error' : 'Telemetry failed');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     }
   }
 
-  void _showAlarmDialog(String? time) {
+  Future<void> _showAlarmDialog(String? time) async {
     if (!mounted) return;
-    _audio.play(AssetSource('alarm.mp3'));
-    _audio.setReleaseMode(ReleaseMode.loop);
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('⏰ Wake Up!',
-            style: TextStyle(
-                color: AppTheme.pink,
-                fontSize: 22,
-                fontWeight: FontWeight.w800)),
-        content: const Text(
-            'Your optimal sleep cycle is complete.\nTime to rise and shine!',
-            style: TextStyle(color: AppTheme.textPrimary)),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              _audio.stop();
-              Navigator.pop(context);
-            },
-            child: const Text('DISMISS'),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => AlarmTriggerScreen(alarmTime: time),
       ),
     );
   }
@@ -166,7 +151,8 @@ class _SleepScreenState extends State<SleepScreen>
       if (!ok) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Could not start monitoring — check permissions')),
+            content: Text('Could not start monitoring — check permissions'),
+          ),
         );
       }
     }
@@ -198,27 +184,36 @@ class _SleepScreenState extends State<SleepScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('S M A R T W A K E',
-                      style: TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 3)),
+                  const Text(
+                    'S M A R T W A K E',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 3,
+                    ),
+                  ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: _stateColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
-                      border:
-                          Border.all(color: _stateColor.withValues(alpha: 0.4)),
+                      border: Border.all(
+                        color: _stateColor.withValues(alpha: 0.4),
+                      ),
                     ),
-                    child: Text(_state.replaceAll('_', ' '),
-                        style: TextStyle(
-                            color: _stateColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.5)),
+                    child: Text(
+                      _state.replaceAll('_', ' '),
+                      style: TextStyle(
+                        color: _stateColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -238,9 +233,10 @@ class _SleepScreenState extends State<SleepScreen>
                     boxShadow: _monitoring
                         ? [
                             BoxShadow(
-                                color: AppTheme.primary.withValues(alpha: 0.25),
-                                blurRadius: 40,
-                                spreadRadius: 10)
+                              color: AppTheme.primary.withValues(alpha: 0.25),
+                              blurRadius: 40,
+                              spreadRadius: 10,
+                            ),
                           ]
                         : [],
                   ),
@@ -259,18 +255,23 @@ class _SleepScreenState extends State<SleepScreen>
               if (_onsetTime != null)
                 GlowCard(
                   glowColor: AppTheme.teal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.bedtime, color: AppTheme.teal, size: 18),
                       const SizedBox(width: 8),
-                      Text('Sleep onset: $_onsetTime',
-                          style: const TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600)),
+                      Text(
+                        'Sleep onset: $_onsetTime',
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -281,19 +282,22 @@ class _SleepScreenState extends State<SleepScreen>
               Row(
                 children: [
                   _StatChip(
-                      label: 'BATTERY',
-                      value: '$_battery%',
-                      icon: _charging ? Icons.bolt : Icons.battery_std),
+                    label: 'BATTERY',
+                    value: '$_battery%',
+                    icon: _charging ? Icons.bolt : Icons.battery_std,
+                  ),
                   const SizedBox(width: 10),
                   _StatChip(
-                      label: 'MOTION',
-                      value: '${_accelMag.toStringAsFixed(2)} g',
-                      icon: Icons.vibration),
+                    label: 'MOTION',
+                    value: '${_accelMag.toStringAsFixed(2)} g',
+                    icon: Icons.vibration,
+                  ),
                   const SizedBox(width: 10),
                   _StatChip(
-                      label: 'STREAK',
-                      value: '$_consecutive',
-                      icon: Icons.trending_up),
+                    label: 'STREAK',
+                    value: '$_consecutive',
+                    icon: Icons.trending_up,
+                  ),
                 ],
               ),
 
@@ -335,8 +339,11 @@ class _SleepScreenState extends State<SleepScreen>
 class _StatChip extends StatelessWidget {
   final String label, value;
   final IconData icon;
-  const _StatChip(
-      {required this.label, required this.value, required this.icon});
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -352,14 +359,22 @@ class _StatChip extends StatelessWidget {
           children: [
             Icon(icon, color: AppTheme.primary, size: 18),
             const SizedBox(height: 4),
-            Text(value,
-                style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700)),
-            Text(label,
-                style: const TextStyle(
-                    color: AppTheme.textSecond, fontSize: 9, letterSpacing: 1)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppTheme.textSecond,
+                fontSize: 9,
+                letterSpacing: 1,
+              ),
+            ),
           ],
         ),
       ),
