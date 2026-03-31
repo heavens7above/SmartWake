@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -82,6 +82,12 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+
+# Local Flutter tooling / bundled JDK (do not commit)
+SmartWakeApp/jdk-17/
+SmartWakeApp/jdk17.tar.gz
+SmartWakeApp/flutter_*.log
+SmartWakeApp/devtools_options.yaml
 
 # Symbolication related
 app.*.symbols
