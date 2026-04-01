@@ -69,7 +69,7 @@ class _AlarmTriggerScreenState extends State<AlarmTriggerScreen>
 
     // Acknowledge wake to server
     final deviceId = await StorageService.getDeviceId();
-    await ApiService.ackWake(deviceId);
+    final acked = await ApiService.ackWake(deviceId);
 
     // Restore system UI
     SystemChrome.setEnabledSystemUIMode(
@@ -77,7 +77,7 @@ class _AlarmTriggerScreenState extends State<AlarmTriggerScreen>
       overlays: SystemUiOverlay.values,
     );
 
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) Navigator.of(context).pop(acked);
   }
 
   @override

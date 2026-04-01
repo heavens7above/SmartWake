@@ -14,28 +14,6 @@ int _asInt(Object? value) {
 Map<String, dynamic>? _asMap(Object? value) =>
     value is Map ? value.map((key, val) => MapEntry('$key', val)) : null;
 
-class TelemetryResponse {
-  final String state;
-  final double sleepProb;
-  final String? onsetTime;
-  final int consecutive;
-
-  TelemetryResponse({
-    required this.state,
-    required this.sleepProb,
-    this.onsetTime,
-    required this.consecutive,
-  });
-
-  factory TelemetryResponse.fromJson(Map<String, dynamic> j) =>
-      TelemetryResponse(
-        state: j['state'] ?? 'TRACKING',
-        sleepProb: _asDouble(j['sleep_prob']),
-        onsetTime: j['onset_time'],
-        consecutive: _asInt(j['consecutive_above_threshold']),
-      );
-}
-
 class AlarmStatus {
   final bool scheduled;
   final String? alarmTime;
@@ -43,12 +21,12 @@ class AlarmStatus {
   AlarmStatus({required this.scheduled, this.alarmTime});
 
   factory AlarmStatus.fromJson(Map<String, dynamic> j) => AlarmStatus(
-    scheduled: j['alarm_scheduled'] == true,
-    alarmTime: j['alarm_time'],
-  );
+        scheduled: j['alarm_scheduled'] == true,
+        alarmTime: j['alarm_time'],
+      );
 
   DateTime? get alarmDateTime =>
-      alarmTime != null ? DateTime.tryParse(alarmTime!) : null;
+      alarmTime != null ? DateTime.tryParse(alarmTime!)?.toLocal() : null;
 }
 
 class SleepSession {
@@ -71,16 +49,15 @@ class SleepSession {
   });
 
   factory SleepSession.fromJson(Map<String, dynamic> j) => SleepSession(
-    id: _asInt(j['id']),
-    onsetTime: j['onset_time'],
-    wakeDeadline: j['wake_deadline'],
-    alarmTime: j['alarm_time'],
-    alarmFired: j['alarm_fired'] == 1 || j['alarm_fired'] == true,
-    qualityRating: j['quality_rating'] != null
-        ? _asInt(j['quality_rating'])
-        : null,
-    createdAt: j['created_at'] ?? '',
-  );
+        id: _asInt(j['id']),
+        onsetTime: j['onset_time'],
+        wakeDeadline: j['wake_deadline'],
+        alarmTime: j['alarm_time'],
+        alarmFired: j['alarm_fired'] == 1 || j['alarm_fired'] == true,
+        qualityRating:
+            j['quality_rating'] != null ? _asInt(j['quality_rating']) : null,
+        createdAt: j['created_at'] ?? '',
+      );
 }
 
 class LogEntry {
@@ -97,11 +74,11 @@ class LogEntry {
   });
 
   factory LogEntry.fromJson(Map<String, dynamic> j) => LogEntry(
-    timestamp: j['timestamp'] ?? '',
-    sleepProb: j['sleep_prob'] != null ? _asDouble(j['sleep_prob']) : null,
-    accelMagnitude: _asDouble(j['accel_magnitude']),
-    charging: j['charging'] == 1 || j['charging'] == true,
-  );
+        timestamp: j['timestamp'] ?? '',
+        sleepProb: j['sleep_prob'] != null ? _asDouble(j['sleep_prob']) : null,
+        accelMagnitude: _asDouble(j['accel_magnitude']),
+        charging: j['charging'] == 1 || j['charging'] == true,
+      );
 }
 
 class DashboardData {
@@ -119,9 +96,8 @@ class DashboardData {
     final recentSession = _asMap(j['recent_session']);
     return DashboardData(
       deviceId: j['device_id'] ?? '',
-      recentSession: recentSession != null
-          ? SleepSession.fromJson(recentSession)
-          : null,
+      recentSession:
+          recentSession != null ? SleepSession.fromJson(recentSession) : null,
       logs: (j['logs'] as List<dynamic>? ?? [])
           .map(_asMap)
           .whereType<Map<String, dynamic>>()

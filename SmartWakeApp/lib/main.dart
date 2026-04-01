@@ -21,6 +21,8 @@ class SmartWakeApp extends StatefulWidget {
 }
 
 class _SmartWakeAppState extends State<SmartWakeApp> {
+  final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
   @override
   void initState() {
     super.initState();
@@ -29,7 +31,17 @@ class _SmartWakeAppState extends State<SmartWakeApp> {
 
   Future<void> _registerDevice() async {
     final deviceId = await StorageService.getDeviceId();
-    await ApiService.registerDevice(deviceId);
+    final ok = await ApiService.registerDevice(deviceId);
+    if (ok) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scaffoldMessengerKey.currentState?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Device registration failed. History and alarm sync will stay offline until the server is reachable.',
+          ),
+        ),
+      );
+    });
   }
 
   @override
@@ -37,6 +49,7 @@ class _SmartWakeAppState extends State<SmartWakeApp> {
     return MaterialApp(
       title: 'SmartWake',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       theme: AppTheme.darkTheme,
       home: const ShellScreen(),
     );

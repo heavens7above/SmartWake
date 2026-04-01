@@ -20,14 +20,18 @@ class SleepScreen extends StatefulWidget {
 class _SleepScreenState extends State<SleepScreen>
     with TickerProviderStateMixin {
   bool _monitoring = false;
+  bool _notificationGranted = true;
+  bool _batteryOptimizationGranted = true;
   String _state = 'IDLE';
   double _sleepProb = 0.0;
   String? _onsetTime;
+  String? _alarmTime;
   int _consecutive = 0;
   int _battery = 0;
   bool _charging = false;
   double _accelMag = 0.0;
   DateTime? _lastTelemetryErrorToast;
+  DateTime? _lastAlarmErrorToast;
 
   late AnimationController _pulseCtrl;
   late Animation<double> _pulseAnim;
@@ -45,6 +49,10 @@ class _SleepScreenState extends State<SleepScreen>
     ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
     FlutterForegroundTask.addTaskDataCallback(_onTaskData);
     _loadState();
+    _refreshPermissions();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _promptPermissionsOnFirstLaunch();
+    });
   }
 
   @override
@@ -59,6 +67,67 @@ class _SleepScreenState extends State<SleepScreen>
     if (mounted) setState(() => _monitoring = running);
   }
 
+  Future<void> _refreshPermissions() async {
+    final notificationGranted = await Permission.notification.isGranted;
+    final batteryOptimizationGranted =
+        await Permission.ignoreBatteryOptimizations.isGranted;
+    if (!mounted) return;
+    setState(() {
+      _notificationGranted = notificationGranted;
+      _batteryOptimizationGranted = batteryOptimizationGranted;
+    });
+  }
+
+  Future<bool> _requestMonitoringPermissions() async {
+    var notificationStatus = await Permission.notification.status;
+    if (!notificationStatus.isGranted) {
+      notificationStatus = await Permission.notification.request();
+    }
+
+    var batteryStatus = await Permission.ignoreBatteryOptimizations.status;
+    if (!batteryStatus.isGranted) {
+      batteryStatus = await Permission.ignoreBatteryOptimizations.request();
+    }
+
+    await StorageService.setSetupPermissionsPrompted(true);
+
+    if (!mounted) return notificationStatus.isGranted;
+
+    setState(() {
+      _notificationGranted = notificationStatus.isGranted;
+      _batteryOptimizationGranted = batteryStatus.isGranted;
+    });
+
+    if (!notificationStatus.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Notification permission is required before SmartWake can run its foreground monitor.',
+          ),
+        ),
+      );
+      return false;
+    }
+
+    if (!batteryStatus.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Battery optimisation exemption was denied. Monitoring can still start, but Android may stop it in the background.',
+          ),
+        ),
+      );
+    }
+
+    return true;
+  }
+
+  Future<void> _promptPermissionsOnFirstLaunch() async {
+    final prompted = await StorageService.getSetupPermissionsPrompted();
+    if (prompted) return;
+    await _requestMonitoringPermissions();
+  }
+
   void _onTaskData(Object data) {
     if (!mounted || data is! Map<Object?, Object?>) return;
     if (data['type'] == 'telemetry') {
@@ -68,13 +137,14 @@ class _SleepScreenState extends State<SleepScreen>
       final nextBattery = data['battery'];
       final nextCharging = data['charging'];
       setState(() {
-        _state = nextState is String && nextState.isNotEmpty
-            ? nextState
-            : _state;
+        _state =
+            nextState is String && nextState.isNotEmpty ? nextState : _state;
         _sleepProb = data['sleep_prob'] is num
             ? (data['sleep_prob'] as num).toDouble()
             : double.tryParse('${data['sleep_prob']}') ?? 0.0;
         _onsetTime = nextOnsetTime is String ? nextOnsetTime : null;
+        final nextAlarmTime = data['alarm_time'];
+        _alarmTime = nextAlarmTime is String ? nextAlarmTime : null;
         _consecutive = nextConsecutive is num
             ? nextConsecutive.toInt()
             : int.tryParse('$nextConsecutive') ?? 0;
@@ -84,21 +154,23 @@ class _SleepScreenState extends State<SleepScreen>
         _charging = nextCharging is bool
             ? nextCharging
             : '$nextCharging'.toLowerCase() == 'true';
-        final x = data['accel_x'] is num
-            ? (data['accel_x'] as num).toDouble()
-            : 0.0;
-        final y = data['accel_y'] is num
-            ? (data['accel_y'] as num).toDouble()
-            : 0.0;
-        final z = data['accel_z'] is num
-            ? (data['accel_z'] as num).toDouble()
-            : 0.0;
+        final x =
+            data['accel_x'] is num ? (data['accel_x'] as num).toDouble() : 0.0;
+        final y =
+            data['accel_y'] is num ? (data['accel_y'] as num).toDouble() : 0.0;
+        final z =
+            data['accel_z'] is num ? (data['accel_z'] as num).toDouble() : 0.0;
         _accelMag = math.sqrt(x * x + y * y + z * z);
       });
     } else if (data['type'] == 'alarm') {
       _showAlarmDialog(
         data['alarm_time'] is String ? data['alarm_time'] as String : null,
       );
+    } else if (data['type'] == 'alarm_sync') {
+      final t = data['alarm_time'];
+      if (mounted) {
+        setState(() => _alarmTime = t is String && t.isNotEmpty ? t : null);
+      }
     } else if (data['type'] == 'telemetry_error') {
       final now = DateTime.now();
       if (_lastTelemetryErrorToast == null ||
@@ -114,18 +186,55 @@ class _SleepScreenState extends State<SleepScreen>
           context,
         ).showSnackBar(SnackBar(content: Text(msg)));
       }
+    } else if (data['type'] == 'alarm_error') {
+      final now = DateTime.now();
+      if (_lastAlarmErrorToast == null ||
+          now.difference(_lastAlarmErrorToast!) > const Duration(minutes: 2)) {
+        _lastAlarmErrorToast = now;
+        final status = data['status'];
+        final error = data['error'];
+        final msg = status != null
+            ? 'Alarm sync failed (HTTP $status)'
+            : (error != null
+                ? 'Alarm sync error: $error'
+                : 'Alarm sync failed');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
+      }
     }
   }
 
   Future<void> _showAlarmDialog(String? time) async {
     if (!mounted) return;
 
-    Navigator.of(context).push(
+    final acked = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => AlarmTriggerScreen(alarmTime: time),
       ),
     );
+    if (!mounted || acked != false) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Wake acknowledgement did not reach the server. The alarm may resurface until connectivity returns.',
+        ),
+      ),
+    );
+  }
+
+  String _formatTime(String? iso) {
+    if (iso == null || iso.isEmpty) return '--:--';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final h = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+      final m = dt.minute.toString().padLeft(2, '0');
+      final period = dt.hour >= 12 ? 'PM' : 'AM';
+      return '$h:$m $period';
+    } catch (_) {
+      return iso;
+    }
   }
 
   Future<void> _toggleMonitor() async {
@@ -139,9 +248,8 @@ class _SleepScreenState extends State<SleepScreen>
         _sleepProb = 0;
       });
     } else {
-      // Request permissions
-      await Permission.notification.request();
-      await Permission.ignoreBatteryOptimizations.request();
+      final permissionsOk = await _requestMonitoringPermissions();
+      if (!permissionsOk) return;
 
       final result = await MonitorService.start();
       final ok = result is ServiceRequestSuccess;
@@ -251,6 +359,34 @@ class _SleepScreenState extends State<SleepScreen>
 
               const SizedBox(height: 28),
 
+              // Alarm time banner
+              if (_alarmTime != null)
+                GlowCard(
+                  glowColor: AppTheme.pink,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.alarm, color: AppTheme.pink, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Scheduled Alarm: ${_formatTime(_alarmTime)}',
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              if (_alarmTime != null) const SizedBox(height: 12),
+
               // Onset time banner
               if (_onsetTime != null)
                 GlowCard(
@@ -265,7 +401,7 @@ class _SleepScreenState extends State<SleepScreen>
                       const Icon(Icons.bedtime, color: AppTheme.teal, size: 18),
                       const SizedBox(width: 8),
                       Text(
-                        'Sleep onset: $_onsetTime',
+                        'Sleep onset: ${_formatTime(_onsetTime)}',
                         style: const TextStyle(
                           color: AppTheme.textPrimary,
                           fontSize: 13,
@@ -277,6 +413,53 @@ class _SleepScreenState extends State<SleepScreen>
                 ),
 
               if (_onsetTime != null) const SizedBox(height: 12),
+
+              if (!_notificationGranted || !_batteryOptimizationGranted)
+                GlowCard(
+                  glowColor: AppTheme.warning,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'BACKGROUND ACCESS',
+                        style: TextStyle(
+                          color: AppTheme.warning,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _notificationGranted
+                            ? 'Battery optimisation is still enabled. SmartWake can run, but Android may stop monitoring in the background.'
+                            : 'Notification permission is still denied. SmartWake cannot start its foreground monitor until it is allowed.',
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            await _requestMonitoringPermissions();
+                          },
+                          child: const Text('Grant Permissions'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              if (!_notificationGranted || !_batteryOptimizationGranted)
+                const SizedBox(height: 12),
 
               // Stats row
               Row(

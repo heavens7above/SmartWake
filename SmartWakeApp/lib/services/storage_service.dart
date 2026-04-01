@@ -18,6 +18,7 @@ class StorageService {
   static const _kAlarmAudioPath = 'alarm_audio_path';
   static const _kAlarmHour = 'alarm_hour';
   static const _kAlarmMinute = 'alarm_minute';
+  static const _kSetupPermissionsPrompted = 'setup_permissions_prompted';
 
   static Future<SharedPreferences> get _p => SharedPreferences.getInstance();
 
@@ -118,4 +119,10 @@ class StorageService {
 
   static Future<void> setIsMonitoring(bool v) async =>
       (await _p).setBool(_kMonitoring, v);
+
+  static Future<bool> getSetupPermissionsPrompted() async =>
+      (await _p).getBool(_kSetupPermissionsPrompted) ?? false;
+
+  static Future<void> setSetupPermissionsPrompted(bool value) async =>
+      (await _p).setBool(_kSetupPermissionsPrompted, value);
 }

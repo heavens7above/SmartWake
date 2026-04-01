@@ -24,14 +24,13 @@ class SleepMonitorHandler extends TaskHandler {
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     DartPluginRegistrant.ensureInitialized();
-    _accelSub =
-        userAccelerometerEventStream(
-          samplingPeriod: SensorInterval.normalInterval,
-        ).listen((e) {
-          _x = e.x;
-          _y = e.y;
-          _z = e.z;
-        });
+    _accelSub = userAccelerometerEventStream(
+      samplingPeriod: SensorInterval.normalInterval,
+    ).listen((e) {
+      _x = e.x;
+      _y = e.y;
+      _z = e.z;
+    });
   }
 
   @override
@@ -66,7 +65,7 @@ class SleepMonitorHandler extends TaskHandler {
             headers: {'Content-Type': 'application/json', 'X-API-Key': apiKey},
             body: jsonEncode({
               'device_id': deviceId,
-              'timestamp': now.toIso8601String(),
+              'timestamp': now.toUtc().toIso8601String(),
               'charging': charging,
               'battery_level': level,
               'accel_x': _x,
@@ -88,6 +87,7 @@ class SleepMonitorHandler extends TaskHandler {
           'state': state,
           'sleep_prob': sleepProb,
           'onset_time': data['onset_time'],
+          'alarm_time': data['alarm_time'],
           'consecutive': data['consecutive_above_threshold'] ?? 0,
           'battery': level,
           'charging': charging,
@@ -125,15 +125,28 @@ class SleepMonitorHandler extends TaskHandler {
       final apiKey = await StorageService.getApiKey();
       final baseUrl = await StorageService.getBaseUrl();
 
-      final res = await http
-          .get(
-            Uri.parse('$baseUrl/alarm-status?device_id=$deviceId'),
-            headers: {'X-API-Key': apiKey},
-          )
-          .timeout(const Duration(seconds: 10));
+      final res = await http.get(
+        Uri.parse('$baseUrl/alarm-status?device_id=$deviceId'),
+        headers: {'X-API-Key': apiKey},
+      ).timeout(const Duration(seconds: 10));
 
-      if (res.statusCode != 200) return;
+      if (res.statusCode != 200) {
+        FlutterForegroundTask.sendDataToMain({
+          'type': 'alarm_error',
+          'status': res.statusCode,
+          'body': res.body,
+        });
+        return;
+      }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
+
+      // Sync alarm time with UI even if not firing
+      if (data['alarm_time'] != null) {
+        FlutterForegroundTask.sendDataToMain({
+          'type': 'alarm_sync',
+          'alarm_time': data['alarm_time'],
+        });
+      }
 
       // Server tells us definitively whether to fire
       if (data['should_fire'] == true && _lastAlarmDate != data['alarm_time']) {
@@ -147,7 +160,12 @@ class SleepMonitorHandler extends TaskHandler {
           notificationText: 'Optimal sleep cycle complete. Rise and shine!',
         );
       }
-    } catch (_) {}
+    } catch (e) {
+      FlutterForegroundTask.sendDataToMain({
+        'type': 'alarm_error',
+        'error': e.toString(),
+      });
+    }
   }
 }
 

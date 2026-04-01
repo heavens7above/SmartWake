@@ -22,6 +22,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
   TimeOfDay? _selectedTime;
   AlarmStatus? _alarmStatus;
   bool _loading = false;
+  bool _loadFailed = false;
   bool _saving = false;
   String? _deviceId;
   String? _alarmAudioPath;
@@ -52,6 +53,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
     if (mounted) {
       setState(() {
         _alarmStatus = status;
+        _loadFailed = status == null;
         _loading = false;
       });
     }
@@ -140,7 +142,8 @@ class _AlarmScreenState extends State<AlarmScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Storage permission required for custom alarms')),
+          const SnackBar(
+              content: Text('Storage permission required for custom alarms')),
         );
       }
     }
@@ -224,9 +227,8 @@ class _AlarmScreenState extends State<AlarmScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _selectedTime == null || _saving
-                            ? null
-                            : _setAlarm,
+                        onPressed:
+                            _selectedTime == null || _saving ? null : _setAlarm,
                         icon: _saving
                             ? const SizedBox(
                                 width: 16,
@@ -263,78 +265,89 @@ class _AlarmScreenState extends State<AlarmScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    : _loadFailed
+                        ? const Text(
+                            'Could not load alarm status. Check server connectivity and try again.',
+                            style: TextStyle(
+                              color: AppTheme.textSecond,
+                              fontSize: 13,
+                            ),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                _alarmStatus?.scheduled == true
-                                    ? Icons.alarm_on
-                                    : Icons.alarm_off,
-                                color: _alarmStatus?.scheduled == true
-                                    ? AppTheme.teal
-                                    : AppTheme.textSecond,
+                              Row(
+                                children: [
+                                  Icon(
+                                    _alarmStatus?.scheduled == true
+                                        ? Icons.alarm_on
+                                        : Icons.alarm_off,
+                                    color: _alarmStatus?.scheduled == true
+                                        ? AppTheme.teal
+                                        : AppTheme.textSecond,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'SCHEDULED ALARM',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecond,
+                                      fontSize: 11,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  GestureDetector(
+                                    onTap: _refreshAlarm,
+                                    child: const Icon(
+                                      Icons.refresh,
+                                      color: AppTheme.textSecond,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'SCHEDULED ALARM',
-                                style: TextStyle(
-                                  color: AppTheme.textSecond,
-                                  fontSize: 11,
-                                  letterSpacing: 1.5,
+                              const SizedBox(height: 12),
+                              if (_alarmStatus?.scheduled == true &&
+                                  _alarmStatus?.alarmDateTime != null) ...[
+                                Text(
+                                  fmt.format(_alarmStatus!.alarmDateTime!),
+                                  style: const TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
-                              const Spacer(),
-                              GestureDetector(
-                                onTap: _refreshAlarm,
-                                child: const Icon(
-                                  Icons.refresh,
-                                  color: AppTheme.textSecond,
-                                  size: 18,
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Optimised to nearest 90-min sleep cycle',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecond,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
+                              ] else
+                                const Text(
+                                  'No alarm scheduled yet',
+                                  style: TextStyle(color: AppTheme.textSecond),
+                                ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          if (_alarmStatus?.scheduled == true &&
-                              _alarmStatus?.alarmDateTime != null) ...[
-                            Text(
-                              fmt.format(_alarmStatus!.alarmDateTime!),
-                              style: const TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Optimised to nearest 90-min sleep cycle',
-                              style: TextStyle(
-                                color: AppTheme.textSecond,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ] else
-                            const Text(
-                              'No alarm scheduled yet',
-                              style: TextStyle(color: AppTheme.textSecond),
-                            ),
-                        ],
-                      ),
               ),
 
               const SizedBox(height: 16),
 
               // Custom Audio Selection Card
               GlowCard(
-                glowColor: _alarmAudioPath != null ? AppTheme.pink : AppTheme.border,
+                glowColor:
+                    _alarmAudioPath != null ? AppTheme.pink : AppTheme.border,
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     Icon(
                       Icons.music_note,
-                      color: _alarmAudioPath != null ? AppTheme.pink : AppTheme.textSecond,
+                      color: _alarmAudioPath != null
+                          ? AppTheme.pink
+                          : AppTheme.textSecond,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -355,7 +368,9 @@ class _AlarmScreenState extends State<AlarmScreen> {
                                 ? _alarmAudioPath!.split('/').last
                                 : 'No custom sound set',
                             style: TextStyle(
-                              color: _alarmAudioPath != null ? AppTheme.textPrimary : AppTheme.textSecond,
+                              color: _alarmAudioPath != null
+                                  ? AppTheme.textPrimary
+                                  : AppTheme.textSecond,
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
@@ -369,7 +384,8 @@ class _AlarmScreenState extends State<AlarmScreen> {
                       onPressed: _pickAudioFile,
                       child: Text(
                         _alarmAudioPath != null ? 'CHANGE' : 'SELECT',
-                        style: const TextStyle(color: AppTheme.pink, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: AppTheme.pink, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],

@@ -62,6 +62,71 @@ cd "$SAVED" >/dev/null
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
+resolve_android_sdk_home() {
+    local_properties="$APP_HOME/local.properties"
+
+    if [ -f "$local_properties" ] ; then
+        local_sdk_dir=`sed -n 's/^sdk\.dir=//p' "$local_properties" | tail -n 1`
+        if [ -n "$local_sdk_dir" ] && [ -d "$local_sdk_dir" ] ; then
+            printf '%s\n' "$local_sdk_dir"
+            return 0
+        fi
+    fi
+
+    for candidate in \
+        "$ANDROID_SDK_ROOT" \
+        "$ANDROID_HOME" \
+        "$HOME/Library/Android/sdk"
+    do
+        if [ -n "$candidate" ] && [ -d "$candidate/platforms" ] && [ -d "$candidate/platform-tools" ] ; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+resolve_android_studio_jbr_home() {
+    for candidate in \
+        "$ANDROID_STUDIO_JBR_HOME" \
+        "/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+        "/Applications/Android Studio Preview.app/Contents/jbr/Contents/Home"
+    do
+        if [ -n "$candidate" ] && [ -x "$candidate/bin/java" ] ; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+if [ -z "$JAVA_HOME" ] || {
+    [ ! -x "$JAVA_HOME/bin/java" ] && [ ! -x "$JAVA_HOME/jre/sh/java" ]
+}; then
+    RESOLVED_JAVA_HOME=`resolve_android_studio_jbr_home`
+    if [ $? -eq 0 ] ; then
+        JAVA_HOME="$RESOLVED_JAVA_HOME"
+        export JAVA_HOME
+    fi
+fi
+
+if [ -z "$ANDROID_SDK_ROOT" ] || [ ! -d "$ANDROID_SDK_ROOT/platforms" ] ; then
+    RESOLVED_ANDROID_SDK_HOME=`resolve_android_sdk_home`
+    if [ $? -eq 0 ] ; then
+        ANDROID_SDK_ROOT="$RESOLVED_ANDROID_SDK_HOME"
+        export ANDROID_SDK_ROOT
+    fi
+fi
+
+if [ -z "$ANDROID_HOME" ] || [ ! -d "$ANDROID_HOME/platforms" ] ; then
+    if [ -n "$ANDROID_SDK_ROOT" ] ; then
+        ANDROID_HOME="$ANDROID_SDK_ROOT"
+        export ANDROID_HOME
+    fi
+fi
+
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then

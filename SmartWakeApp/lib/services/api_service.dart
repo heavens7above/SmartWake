@@ -5,9 +5,9 @@ import '../models/models.dart';
 
 class ApiService {
   static Future<Map<String, String>> _headers() async => {
-    'Content-Type': 'application/json',
-    'X-API-Key': await StorageService.getApiKey(),
-  };
+        'Content-Type': 'application/json',
+        'X-API-Key': await StorageService.getApiKey(),
+      };
 
   static Future<String> _base() => StorageService.getBaseUrl();
 
@@ -27,41 +27,6 @@ class ApiService {
     return decoded is Map<String, dynamic> ? decoded : null;
   }
 
-  // ── POST /logs/raw.log ─────────────────────────────────────
-  static Future<TelemetryResponse?> postTelemetry({
-    required String deviceId,
-    required DateTime timestamp,
-    required bool charging,
-    required int batteryLevel,
-    required double accelX,
-    required double accelY,
-    required double accelZ,
-  }) async {
-    try {
-      final res = await http
-          .post(
-            await _uri('/logs/raw.log'),
-            headers: await _headers(),
-            body: jsonEncode({
-              'device_id': deviceId,
-              'timestamp': timestamp.toIso8601String(),
-              'charging': charging,
-              'battery_level': batteryLevel,
-              'accel_x': accelX,
-              'accel_y': accelY,
-              'accel_z': accelZ,
-              'notification_count': 0,
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
-      if (res.statusCode == 200) {
-        final data = _decodeMap(res.body);
-        if (data != null) return TelemetryResponse.fromJson(data);
-      }
-    } catch (_) {}
-    return null;
-  }
-
   // ── POST /wake-time ────────────────────────────────────────
   static Future<bool> setWakeTime(String deviceId, DateTime deadline) async {
     try {
@@ -71,7 +36,7 @@ class ApiService {
             headers: await _headers(),
             body: jsonEncode({
               'device_id': deviceId,
-              'wake_deadline': deadline.toIso8601String(),
+              'wake_deadline': deadline.toUtc().toIso8601String(),
             }),
           )
           .timeout(const Duration(seconds: 10));
