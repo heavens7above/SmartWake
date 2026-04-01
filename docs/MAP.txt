@@ -35,7 +35,7 @@ Three tables:
 | Method | Path                 | What it does                                                                                                                                                                                                                               |
 | ------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `GET`  | `/install`           | Returns a bash one-liner. Running `curl .../install \| bash` on an Android Termux terminal: installs Python, fetches `logger.py` + `alarm.py` + `start.sh` from the server, auto-injects the server's URL so the phone is self-configuring |
-| `GET`  | `/termux/{filename}` | Serves `logger.py`, `alarm.py`, or `start.sh` with `SERVER_URL` dynamically injected                                                                                                                                                       |
+| `GET`  | `/termux/{filename}` | Serves `logger.py`, `alarm.py`, or `start.sh` with the authoritative base URL dynamically injected                                                                                                                                         |
 | `GET`  | `/` or `/health`     | Health check — returns `status: ok`                                                                                                                                                                                                        |
 
 #### Sleep & Inference (protected)
@@ -50,8 +50,10 @@ Three tables:
 
 | Method | Path                          | What it does                                                                                                       |
 | ------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `POST` | `/register`                   | Ensures a device exists in `device_registry` before the app starts using it                                       |
 | `POST` | `/wake-time`                  | Registers/updates a device's desired wake deadline. Also reschedules the alarm if sleep onset was already detected |
-| `GET`  | `/alarm-status?device_id=...` | Returns whether an alarm is scheduled and its exact ISO timestamp                                                  |
+| `GET`  | `/alarm-status?device_id=...` | Returns whether an alarm is scheduled, its exact ISO timestamp, and whether the client should fire right now      |
+| `POST` | `/wake-ack`                   | Marks the current device alarm as fired so clients do not repeatedly trigger the same wake event                  |
 
 #### Dashboard (protected)
 
@@ -92,4 +94,4 @@ When sleep is confirmed, `schedule_alarm()`:
 3. Picks the last complete cycle boundary — provided it's ≥ 15 min before the deadline (otherwise uses the deadline itself)
 4. Stores the result in `sleep_sessions.alarm_time`
 
-The phone polls `/alarm-status` and fires `alarm.py` when the time is reached.
+The phone polls `/alarm-status`, fires `alarm.py` when the time is reached, and then POSTs `/wake-ack`.

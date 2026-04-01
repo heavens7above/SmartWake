@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import PlainTextResponse
@@ -53,13 +52,13 @@ echo ""
 if [ "$IS_TERMUX" = true ]; then
   echo ">> Updating Termux repositories..."
   pkg update -y && pkg upgrade -y
-  echo ">> Installing Python & Termux-API..."
-  pkg install python termux-api -y
+  echo ">> Installing Python, curl, and Termux-API..."
+  pkg install python curl termux-api -y
 fi
 
 # -- Universal: Python packages ------------------------------------------
 echo ">> Installing Python packages (requests, schedule)..."
-pip install requests schedule --quiet
+python -m pip install requests schedule --quiet
 
 # -- Termux only: Android permissions ------------------------------------
 if [ "$IS_TERMUX" = true ]; then
@@ -94,7 +93,7 @@ echo "=============================================="
 def get_termux_file(request: Request, filename: str):
     """
     Serves the python payloads directly, while dynamically injecting
-    the authoritative BASE_URL into logger and alarm so the user
+    the authoritative BASE_URL into the payload scripts so the user
     never has to edit SERVER_URL manually.
     """
     allowed_files = ["logger.py", "alarm.py", "start.sh"]
@@ -110,7 +109,7 @@ def get_termux_file(request: Request, filename: str):
         content = f.read()
 
     # Inject the live BASE_URL so the phone client is auto-configured
-    if filename in {"logger.py", "alarm.py"}:
+    if filename in {"logger.py", "alarm.py", "start.sh"}:
         base_url = _resolve_base_url(request)
         content = content.replace('"https://your-railway-url.up.railway.app"', f'"{base_url}"')
         content = content.replace("'https://your-railway-url.up.railway.app'", f'"{base_url}"')

@@ -4,9 +4,7 @@ pydantic
 joblib
 scikit-learn==1.6.1
 numpy
-pandas
 python-dotenv
 python-multipart
 psycopg2-binary
 gunicorn==21.2.0
-

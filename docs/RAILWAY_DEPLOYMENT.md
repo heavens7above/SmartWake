@@ -19,8 +19,9 @@ Railway will automatically detect these bindings natively the moment you initial
 
 ## ⚖️ Step 2: Global Environment Variables
 Inside your Railway Container **Variables** tab, you must manually inject your Zero-Trust locks!
-<!-- CODEX-FIX: Replace the committed example secret with a generated value because the server now requires an explicit environment key. -->
 - `API_KEY` = `generate-a-random-secret-and-reuse-it-in-your-clients` *(Required. Set your own value and keep the same one in the app/Termux settings.)* 
+- `MODEL_PATH` = `src/model/sleep_model.pkl` *(Optional override. This matches the server's runtime search path inside the deployed `server/` directory.)*
+- `BASE_URL` = `https://your-public-domain.up.railway.app` *(Recommended so `/install` always emits the public host instead of a proxied container URL.)*
 - `PORT` = `8000` *(Usually auto-assigned by Railway, but enforcing it ensures absolute connectivity)*
 
 ## 🧱 Step 3: SQLite Persistent Volume

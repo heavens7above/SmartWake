@@ -7,12 +7,12 @@ Welcome to the SmartWake Sleep Intelligence Architecture Overview. This system i
 The `server/` directory runs the centralized intelligence platform powering all device clients. Hosted on Railway via NIXPACKS, the server exposesREST endpoints evaluating every incoming device ping against our deployed machine-learning matrix.
 
 ### Moduled Architecture (`server/src/modules/`):
-The intelligence codebase operates beneath a highly compressed modular layout entirely driven utilizing exactly 4 files:
-<!-- CODEX-FIX: Update the documented ingestion route to the live endpoint exposed by the server. -->
+The intelligence codebase operates beneath a modular layout split across five files:
 - **`sleep.py`**: The ingestion `/logs/raw.log` API endpoint. Scikit-learn singletons evaluating dictionaries against `sleep_model.pkl`. The 9-dimension Zero-Crossing array math mechanics, and the consecutive Onset-Tracking state machine all neatly tied natively in one wrapper.
-- **`alarms.py`**: Calculates backwards constraints jumping 90-minute REM cycles. The dynamic `/wake-time` endpoints link backward scheduling physiological thresholds natively parsing SQLite bindings.
+- **`alarms.py`**: Calculates backwards constraints jumping 90-minute REM cycles. The `/wake-time`, `/alarm-status`, `/register`, and `/wake-ack` endpoints keep wake deadlines, alarm state, and acknowledgement handling consistent across the app and Termux clients.
 - **`dashboards.py`**: Read-only `/dashboard` visual mapping and the specific `/rating` API schemas decoupled perfectly into their own UI-rendering logic chunks.
 - **`shared.py`**: Globals extending the environment map. Core explicit `sqlite3` execution chains, all static base Pydantic schemas protecting route dependencies, and pure cyclic mathematics encapsulating hour boundaries!
+- **`termux.py`**: Public bootstrap routes that serve `/install` and `/termux/*`, injecting the live server base URL into the phone worker payloads.
 
 ### Database Structure (SQLite)
 The application relies strictly on Python's built in driver `sqlite3` without complex ORM layers for minimal overhead.
@@ -26,10 +26,9 @@ The application relies strictly on Python's built in driver `sqlite3` without co
 
 The client environment avoids complex JVM Android Studio dependencies by driving simple backgrounded polling scripts directly atop the OS utilizing `termux-api`.
 
-<!-- CODEX-FIX: Update the worker description so the documented telemetry route matches the actual logger implementation. -->
 - **`logger.py`**: A non-blocking thread utilizing `schedule.every(5).minutes`. Polls native Android sensors sequentially (Accelerometer, Battery broadcast receivers, active Notification tray count). POSTs the resultant payload array blindly to our `/logs/raw.log` socket over HTTPs.
-- **`alarm.py`**: Checks `/alarm-status?device_id=...` periodically. Upon crossing the scheduled threshold, utilizes Termux's media player, vibration module, and Heads-Up notification API to trigger the wakeup locally without requiring Cloud-To-Device push notifications.
-- **`start.sh`**: Binds a CPU Wake Lock keeping Termux alive over Android Doze restrictions, then multiplexes both pythons scripts over background threads simultaneously.
+- **`alarm.py`**: Checks `/alarm-status?device_id=...` periodically. Upon crossing the scheduled threshold, it triggers the wakeup locally and then POSTs `/wake-ack` so the server does not keep reporting the same alarm as pending.
+- **`start.sh`**: Binds a CPU wake lock, verifies the server `/health` endpoint before starting, then supervises both Python scripts and exits loudly if either worker dies.
 
 ---
 

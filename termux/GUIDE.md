@@ -18,15 +18,20 @@ Also install the companion app **Termux:API**:
 curl -sL https://smartwake.up.railway.app/install | bash
 ```
 
-<!-- CODEX-FIX: Clarify that only the host in the sample command changes because the install route already injects the rest of the config. -->
 > Replace only the domain in the sample command with your actual Railway deployment URL.
 
 That single command will automatically:
 - Update Termux package repositories
-- Install Python and the Termux-API drivers
+- Install Python, curl, and the Termux-API drivers
 - Install `requests` and `schedule` Python packages
 - Download `logger.py`, `alarm.py`, and `start.sh` into `~/smartwake/`
 - Inject your server's URL into the scripts — **no manual editing needed**
+
+If your server uses a custom `API_KEY`, export it before starting:
+
+```bash
+export SMARTWAKE_API_KEY=your-shared-secret
+```
 
 ---
 
@@ -59,8 +64,9 @@ cd ~/smartwake && bash start.sh
 
 This will:
 - Bind a **wake lock** so Android doesn't kill the process when you lock your screen
+- Verify the SmartWake `/health` endpoint before the workers start
 - Run `logger.py` in the background — posts a telemetry vector every 5 minutes
-- Run `alarm.py` in the background — polls the server for scheduled alarm events
+- Run `alarm.py` in the background — polls the server for scheduled alarm events and acknowledges the alarm after it fires
 
 Leave the Termux notification in your tray and go to bed! 🌙
 

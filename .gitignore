@@ -31,6 +31,9 @@ env/
 # IDEs
 .idea/
 .vscode/
+.cursor/
+.claude/
+*.code-workspace
 
 scripts/
 
@@ -46,9 +49,11 @@ server/sentinel.db
 server/smartwake.db
 server/db/*.db
 server/logs/
+server/.env
 termux/device_id.txt
 termux/smartwake.log
-# Note: We must explicitly COMMIT the trained model right now, otherwise Railway compiles without it!
+*.pkl
+!server/src/model/sleep_model.pkl
 
 # Training Data
 train/Fitabase Data */

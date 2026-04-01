@@ -1,48 +1,95 @@
-import os
-import contextlib
-import shutil
-import joblib
 import logging
-import numpy as np
-from pathlib import Path
+import os
+import shutil
+import warnings
 from datetime import datetime, timedelta
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from src.modules.shared import LogPayload, get_db, compute_magnitude, cyclical_encode
-from src.modules.alarms import schedule_alarm
+from pathlib import Path
+
+import joblib
+import numpy as np
+from fastapi import APIRouter, File, HTTPException, UploadFile
+
+from src.modules.alarms import get_alarm, schedule_alarm
+from src.modules.shared import (
+    LogPayload,
+    compute_magnitude,
+    cyclical_encode,
+    get_db,
+    normalize_datetime,
+)
 
 router = APIRouter()
 
 # Canonical model location — always written/read here
-MODEL_DIR  = Path("src/model")
+SERVER_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = Path(__file__).resolve().parents[1]
+MODEL_DIR = SRC_ROOT / "model"
 MODEL_FILE = MODEL_DIR / "sleep_model.pkl"
+EXPECTED_FEATURE_COUNT = 9
 
 # ======================== ML Inference & Features ========================
 model = None
 model_load_attempted = False
-_model_source_path: str | None = None   # tracks which file is currently loaded
+_model_source_path: str | None = None
+
+
+class ModelUnavailableError(RuntimeError):
+    pass
+
+
+def _resolve_model_path(raw_path: str) -> Path:
+    candidate = Path(raw_path)
+    if candidate.is_absolute():
+        return candidate
+    return SERVER_ROOT / candidate
+
+
+def _display_model_path(path: Path | None) -> str | None:
+    if path is None:
+        return None
+    try:
+        return str(path.relative_to(SERVER_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _validate_model_instance(candidate):
+    if not hasattr(candidate, "predict_proba"):
+        raise ValueError("Model must expose predict_proba().")
+
+    feature_count = getattr(candidate, "n_features_in_", None)
+    if feature_count is not None and feature_count != EXPECTED_FEATURE_COUNT:
+        raise ValueError(
+            f"Model expects {feature_count} features; SmartWake sends {EXPECTED_FEATURE_COUNT}."
+        )
+
+    return candidate
+
 
 def _candidate_model_paths():
-    """Search the known model locations so config/path drift does not silently disable inference."""
     configured = os.getenv("MODEL_PATH")
     candidates = []
     if configured:
-        candidates.append(Path(configured))
-    # canonical location first so uploads are always preferred
-    candidates.extend([
-        MODEL_FILE,
-        Path("src/ml/sleep_model.pkl"),
-        Path("src/sleep_model.pkl"),
-    ])
+        candidates.append(_resolve_model_path(configured))
+
+    candidates.extend(
+        [
+            MODEL_FILE,
+            SRC_ROOT / "ml" / "sleep_model.pkl",
+            SRC_ROOT / "sleep_model.pkl",
+        ]
+    )
+
     seen, unique = set(), []
-    for c in candidates:
-        key = str(c)
+    for candidate in candidates:
+        key = str(candidate.resolve()) if candidate.exists() else str(candidate)
         if key not in seen:
             seen.add(key)
-            unique.append(c)
+            unique.append(candidate)
     return unique
 
+
 def get_model(force_reload: bool = False):
-    """Return the cached model, loading from disk on first call or when *force_reload* is True."""
     global model, model_load_attempted, _model_source_path
     if model_load_attempted and not force_reload:
         return model
@@ -55,7 +102,7 @@ def get_model(force_reload: bool = False):
         if not model_path.exists():
             continue
         try:
-            model = joblib.load(model_path)
+            model = _validate_model_instance(joblib.load(model_path))
             _model_source_path = str(model_path)
             logging.info("Loaded sleep model from %s", model_path)
             break
@@ -63,55 +110,85 @@ def get_model(force_reload: bool = False):
             logging.exception("Failed to load sleep model from %s", model_path)
 
     if model is None:
-        logging.warning("Sleep model not found; inference will return 0.0 until a model is uploaded.")
+        logging.warning("Sleep model not found or invalid.")
     return model
 
-def predict(feature_vector) -> float:
-    m = get_model()
-    if m is None:
-        return 0.0
-    import warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", UserWarning)
-        probs = m.predict_proba(feature_vector)
-    return float(probs[0][1])
+
+def predict(feature_vector: np.ndarray) -> float:
+    current_model = get_model()
+    if current_model is None:
+        raise ModelUnavailableError(
+            f"Sleep model is unavailable. Upload a valid model to {_display_model_path(MODEL_FILE)}."
+        )
+
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            probs = current_model.predict_proba(feature_vector)
+    except Exception as exc:
+        raise ModelUnavailableError(f"Sleep model inference failed: {exc}") from exc
+
+    classes = list(getattr(current_model, "classes_", []))
+    positive_index = classes.index(1) if 1 in classes else (1 if probs.shape[1] > 1 else None)
+    if positive_index is None:
+        raise ModelUnavailableError("Sleep model does not expose a positive sleep class.")
+
+    probability = float(probs[0][positive_index])
+    if not 0.0 <= probability <= 1.0:
+        raise ModelUnavailableError("Sleep model returned an invalid probability outside [0, 1].")
+    return probability
+
 
 def build_feature_vector(rows: list) -> np.ndarray:
     if not rows:
-        return np.zeros((1, 9))
-    mags = np.array([r['accel_magnitude'] for r in rows])
+        return np.zeros((1, EXPECTED_FEATURE_COUNT))
+
+    mags = np.array([r["accel_magnitude"] for r in rows], dtype=float)
     accel_magnitude_mean = np.mean(mags)
     accel_magnitude_std = np.std(mags)
     accel_magnitude_max = np.max(mags)
-    
+
     if len(mags) > 1 and accel_magnitude_std > 0:
         mean_centered = mags - accel_magnitude_mean
         zero_crossings = np.sum(np.diff(np.sign(mean_centered)) != 0)
         zero_crossing_rate = zero_crossings / len(mags)
     else:
         zero_crossing_rate = 0.0
-        
-    notification_delta = rows[-1]['notification_count'] - rows[0]['notification_count']
+
+    notification_delta = rows[-1]["notification_count"] - rows[0]["notification_count"]
     consecutive_still_count = 0
-    for r in reversed(rows):
-        if r['accel_magnitude'] < 0.05:
+    for row in reversed(rows):
+        if row["accel_magnitude"] < 0.05:
             consecutive_still_count += 1
         else:
             break
-            
-    charging = 1 if rows[-1]['charging'] else 0
-    hour_sin, hour_cos = cyclical_encode(rows[-1]['hour'], rows[-1]['minute'])
-    
-    features = [
-        accel_magnitude_mean, accel_magnitude_std, accel_magnitude_max,
-        zero_crossing_rate, notification_delta, consecutive_still_count,
-        charging, hour_sin, hour_cos
-    ]
+
+    charging = 1 if rows[-1]["charging"] else 0
+    hour_sin, hour_cos = cyclical_encode(rows[-1]["hour"], rows[-1]["minute"])
+
+    features = np.array(
+        [
+            accel_magnitude_mean,
+            accel_magnitude_std,
+            accel_magnitude_max,
+            zero_crossing_rate,
+            notification_delta,
+            consecutive_still_count,
+            charging,
+            hour_sin,
+            hour_cos,
+        ],
+        dtype=float,
+    )
+    if not np.isfinite(features).all():
+        raise ValueError("Telemetry feature vector contains non-finite values.")
     return np.array([features])
+
 
 # ======================== Onset State Machine ========================
 onset_state = {}
 THRESHOLD = 0.75
+
 
 def _should_reset_confirmed_state(device_id: str, timestamp: str, state: dict) -> bool:
     onset_time = state.get("onset_time")
@@ -119,71 +196,114 @@ def _should_reset_confirmed_state(device_id: str, timestamp: str, state: dict) -
         return True
 
     try:
-        current_dt = datetime.fromisoformat(timestamp)
-        onset_dt = datetime.fromisoformat(onset_time)
-    except ValueError:
+        current_dt = normalize_datetime(datetime.fromisoformat(timestamp))
+        onset_dt = normalize_datetime(datetime.fromisoformat(onset_time))
+    except (TypeError, ValueError):
         return True
 
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            '''
+            """
             SELECT COALESCE(alarm_time, wake_deadline) AS reset_time
             FROM sleep_sessions
             WHERE device_id = %s
             ORDER BY id DESC
             LIMIT 1
-            ''',
+            """,
             (device_id,),
         )
         session_row = cursor.fetchone()
 
-    if session_row and session_row["reset_time"]:
-        with contextlib.suppress(ValueError):
-            return current_dt >= datetime.fromisoformat(session_row["reset_time"])
+    try:
+        if session_row and session_row["reset_time"]:
+            reset_dt = normalize_datetime(datetime.fromisoformat(session_row["reset_time"]))
+            return current_dt >= reset_dt
+        return current_dt - onset_dt >= timedelta(hours=16)
+    except (TypeError, ValueError):
+        return True
 
-    return current_dt - onset_dt >= timedelta(hours=16)
 
 def process_log(device_id: str, timestamp: str, sleep_prob: float):
     if device_id not in onset_state:
-        onset_state[device_id] = {"consecutive": 0, "confirmed": False, "onset_time": None}
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT onset_time
+                FROM sleep_sessions
+                WHERE device_id = %s AND alarm_fired = FALSE AND onset_time IS NOT NULL
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (device_id,),
+            )
+            row = cursor.fetchone()
+            if row:
+                onset_state[device_id] = {
+                    "consecutive": 2,
+                    "confirmed": True,
+                    "onset_time": row["onset_time"],
+                }
+            else:
+                onset_state[device_id] = {
+                    "consecutive": 0,
+                    "confirmed": False,
+                    "onset_time": None,
+                }
+
     state = onset_state[device_id]
 
     if state["confirmed"] and _should_reset_confirmed_state(device_id, timestamp, state):
         state = {"consecutive": 0, "confirmed": False, "onset_time": None}
         onset_state[device_id] = state
-    
+
     if state["confirmed"]:
-        return {"sleep_prob": sleep_prob, "state": "CONFIRMED", "onset_time": state["onset_time"], "consecutive_above_threshold": state["consecutive"]}
-        
+        return {
+            "sleep_prob": sleep_prob,
+            "state": "CONFIRMED",
+            "onset_time": state["onset_time"],
+            "consecutive_above_threshold": state["consecutive"],
+            "alarm_time": get_alarm(device_id),
+        }
+
     if sleep_prob >= THRESHOLD:
         state["consecutive"] += 1
         if state["consecutive"] == 1:
             state["onset_time"] = timestamp
-            
+
         if state["consecutive"] >= 2:
             state["confirmed"] = True
             with get_db() as conn:
                 cursor = conn.cursor()
-                cursor.execute('INSERT INTO sleep_sessions (device_id, onset_time) VALUES (%s, %s)', (device_id, state["onset_time"]))
-                conn.commit()
-            schedule_alarm(device_id, state["onset_time"])
-            return {"sleep_prob": sleep_prob, "state": "CONFIRMED", "onset_time": state["onset_time"], "consecutive_above_threshold": state["consecutive"]}
+                cursor.execute(
+                    "INSERT INTO sleep_sessions (device_id, onset_time) VALUES (%s, %s)",
+                    (device_id, state["onset_time"]),
+                )
+            alarm_time = schedule_alarm(device_id, state["onset_time"])
+            return {
+                "sleep_prob": sleep_prob,
+                "state": "CONFIRMED",
+                "onset_time": state["onset_time"],
+                "consecutive_above_threshold": state["consecutive"],
+                "alarm_time": alarm_time,
+            }
     else:
         state["consecutive"] = 0
         state["onset_time"] = None
-        
-    return {"sleep_prob": sleep_prob, "state": "TRACKING", "onset_time": state["onset_time"], "consecutive_above_threshold": state["consecutive"]}
+
+    return {
+        "sleep_prob": sleep_prob,
+        "state": "TRACKING",
+        "onset_time": state["onset_time"],
+        "consecutive_above_threshold": state["consecutive"],
+        "alarm_time": None,
+    }
+
 
 # ======================== Routes ========================
-
 @router.post("/model/upload", summary="Hot-swap the sleep model")
 async def upload_model(file: UploadFile = File(...)):
-    """
-    Upload a new sleep_model.pkl produced by the Colab training notebook.
-    The file is validated, saved to the canonical path, and hot-reloaded
-    into memory — no server restart required.
-    """
     if not file.filename or not file.filename.endswith(".pkl"):
         raise HTTPException(status_code=400, detail="Only .pkl files are accepted.")
 
@@ -191,21 +311,20 @@ async def upload_model(file: UploadFile = File(...)):
     tmp_path = MODEL_FILE.with_suffix(".tmp")
 
     try:
-        # Write to a temp file first so an interrupted upload never corrupts the live model
-        with open(tmp_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
+        with open(tmp_path, "wb") as file_handle:
+            shutil.copyfileobj(file.file, file_handle)
 
-        # Validate the file is a loadable model before committing
         try:
-            candidate = joblib.load(tmp_path)
+            candidate = _validate_model_instance(joblib.load(tmp_path))
         except Exception as exc:
             tmp_path.unlink(missing_ok=True)
-            raise HTTPException(status_code=422, detail=f"File is not a valid scikit-learn model: {exc}") from exc
+            raise HTTPException(
+                status_code=422,
+                detail=f"File is not a valid scikit-learn model: {exc}",
+            ) from exc
 
-        # Commit
         shutil.move(str(tmp_path), str(MODEL_FILE))
 
-        # Hot-reload into RAM
         global model, model_load_attempted, _model_source_path
         model = candidate
         model_load_attempted = True
@@ -213,22 +332,20 @@ async def upload_model(file: UploadFile = File(...)):
 
         model_type = type(candidate).__name__
         logging.info("Sleep model hot-swapped: %s loaded from upload.", model_type)
-
         return {
             "status": "ok",
             "message": "Model uploaded and activated successfully.",
             "model_type": model_type,
-            "saved_to": str(MODEL_FILE),
+            "saved_to": _display_model_path(MODEL_FILE),
         }
     finally:
-        tmp_path.unlink(missing_ok=True)  # clean up if something went wrong
+        tmp_path.unlink(missing_ok=True)
 
 
 @router.get("/model/info", summary="Current model status")
 def model_info():
-    """Return metadata about the currently loaded sleep model."""
-    m = get_model()   # loads lazily if not yet attempted
-    if m is None:
+    current_model = get_model()
+    if current_model is None:
         return {
             "loaded": False,
             "model_type": None,
@@ -237,53 +354,70 @@ def model_info():
         }
     return {
         "loaded": True,
-        "model_type": type(m).__name__,
-        "source_path": _model_source_path,
+        "model_type": type(current_model).__name__,
+        "source_path": _display_model_path(Path(_model_source_path)) if _model_source_path else None,
         "model_file_exists": MODEL_FILE.exists(),
     }
 
 
 @router.post("/logs/raw.log")
 def create_log(payload: LogPayload):
-    payload_json = payload.model_dump_json()
-    logging.info(f"Incoming Payload: {payload_json}")
-        
+    logging.info("Incoming telemetry for %s at %s", payload.device_id, payload.timestamp.isoformat())
+
     magnitude = compute_magnitude(payload.accel_x, payload.accel_y, payload.accel_z)
     timestamp_str = payload.timestamp.isoformat()
     hour = payload.timestamp.hour
     minute = payload.timestamp.minute
-    
+
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             INSERT INTO logs (
-                device_id, timestamp, charging, battery_level, 
-                accel_x, accel_y, accel_z, accel_magnitude, 
+                device_id, timestamp, charging, battery_level,
+                accel_x, accel_y, accel_z, accel_magnitude,
                 notification_count, hour, minute
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
-        ''', (
-            payload.device_id, timestamp_str, payload.charging, payload.battery_level,
-            payload.accel_x, payload.accel_y, payload.accel_z, magnitude,
-            payload.notification_count, hour, minute
-        ))
-        inserted_id = cursor.fetchone()['id']
-        conn.commit()
-        
-        cursor.execute('SELECT * FROM logs WHERE device_id = %s ORDER BY id DESC LIMIT 6', (payload.device_id,))
+            """,
+            (
+                payload.device_id,
+                timestamp_str,
+                payload.charging,
+                payload.battery_level,
+                payload.accel_x,
+                payload.accel_y,
+                payload.accel_z,
+                magnitude,
+                payload.notification_count,
+                hour,
+                minute,
+            ),
+        )
+        inserted_id = cursor.fetchone()["id"]
+        cursor.execute(
+            "SELECT * FROM logs WHERE device_id = %s ORDER BY id DESC LIMIT 6",
+            (payload.device_id,),
+        )
         rows = [dict(row) for row in cursor.fetchall()]
-        
+
     rows.reverse()
-    
     if len(rows) < 2:
         return {"state": "INSUFFICIENT_DATA"}
-        
-    feature_vector = build_feature_vector(rows)
-    sleep_prob = predict(feature_vector)
-    
+
+    try:
+        feature_vector = build_feature_vector(rows)
+        sleep_prob = predict(feature_vector)
+    except ModelUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logging.exception("Telemetry inference failed for device %s", payload.device_id)
+        raise HTTPException(status_code=503, detail=f"Sleep inference failed: {exc}") from exc
+
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute('UPDATE logs SET sleep_prob = %s WHERE id = %s', (sleep_prob, inserted_id))
-        conn.commit()
-        
+        cursor.execute("UPDATE logs SET sleep_prob = %s WHERE id = %s", (sleep_prob, inserted_id))
+
     return process_log(payload.device_id, timestamp_str, sleep_prob)

@@ -6,7 +6,7 @@ import subprocess
 import requests
 import schedule
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logging.basicConfig(
     filename='smartwake.log',
@@ -73,7 +73,7 @@ def log_cycle():
         charging, battery_level = get_battery()
         accel_x, accel_y, accel_z = get_accel()
         notification_count = get_notification_count()
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         
         payload = {
             "device_id": DEVICE_ID,
@@ -90,7 +90,7 @@ def log_cycle():
         res.raise_for_status()
         logger.info("Successfully pushed 5-minute cycle to server.")
     except Exception:
-        logger.exception("Critial error in log_cycle loop")
+        logger.exception("Critical error in log_cycle loop")
 
 def run():
     schedule.every(5).minutes.do(log_cycle)
