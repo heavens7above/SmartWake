@@ -224,33 +224,46 @@ def _should_reset_confirmed_state(device_id: str, timestamp: str, state: dict) -
         return True
 
 
+def _load_initial_onset_state(device_id: str) -> dict:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT onset_time
+            FROM sleep_sessions
+            WHERE device_id = %s AND alarm_fired = FALSE AND onset_time IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (device_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return {
+                "consecutive": 2,
+                "confirmed": True,
+                "onset_time": row["onset_time"],
+            }
+        else:
+            return {
+                "consecutive": 0,
+                "confirmed": False,
+                "onset_time": None,
+            }
+
+
+def _save_confirmed_session(device_id: str, onset_time: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO sleep_sessions (device_id, onset_time) VALUES (%s, %s)",
+            (device_id, onset_time),
+        )
+
+
 def process_log(device_id: str, timestamp: str, sleep_prob: float):
     if device_id not in onset_state:
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT onset_time
-                FROM sleep_sessions
-                WHERE device_id = %s AND alarm_fired = FALSE AND onset_time IS NOT NULL
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (device_id,),
-            )
-            row = cursor.fetchone()
-            if row:
-                onset_state[device_id] = {
-                    "consecutive": 2,
-                    "confirmed": True,
-                    "onset_time": row["onset_time"],
-                }
-            else:
-                onset_state[device_id] = {
-                    "consecutive": 0,
-                    "confirmed": False,
-                    "onset_time": None,
-                }
+        onset_state[device_id] = _load_initial_onset_state(device_id)
 
     state = onset_state[device_id]
 
@@ -274,12 +287,7 @@ def process_log(device_id: str, timestamp: str, sleep_prob: float):
 
         if state["consecutive"] >= 2:
             state["confirmed"] = True
-            with get_db() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO sleep_sessions (device_id, onset_time) VALUES (%s, %s)",
-                    (device_id, state["onset_time"]),
-                )
+            _save_confirmed_session(device_id, state["onset_time"])
             alarm_time = schedule_alarm(device_id, state["onset_time"])
             return {
                 "sleep_prob": sleep_prob,
