@@ -304,6 +304,9 @@ def process_log(device_id: str, timestamp: str, sleep_prob: float):
 # ======================== Routes ========================
 @router.post("/model/upload", summary="Hot-swap the sleep model")
 async def upload_model(file: UploadFile = File(...)):
+    if os.getenv("ALLOW_MODEL_UPLOAD", "false").lower() != "true":
+        raise HTTPException(status_code=403, detail="Model upload is disabled in this environment for security reasons.")
+
     if not file.filename or not file.filename.endswith(".pkl"):
         raise HTTPException(status_code=400, detail="Only .pkl files are accepted.")
 
