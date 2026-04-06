@@ -24,6 +24,7 @@ class SleepMonitorHandler extends TaskHandler {
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     DartPluginRegistrant.ensureInitialized();
+    await StorageService.init();
     _accelSub = userAccelerometerEventStream(
       samplingPeriod: SensorInterval.normalInterval,
     ).listen((e) {
@@ -47,9 +48,9 @@ class SleepMonitorHandler extends TaskHandler {
   // ── telemetry upload ──────────────────────────────────────
   Future<void> _postTelemetry(DateTime now) async {
     try {
-      final deviceId = await StorageService.getDeviceId();
-      final apiKey = await StorageService.getApiKey();
-      final baseUrl = await StorageService.getBaseUrl();
+      final deviceId = StorageService.getDeviceId();
+      final apiKey = StorageService.getApiKey();
+      final baseUrl = StorageService.getBaseUrl();
 
       int level = 50;
       bool charging = false;
@@ -121,9 +122,9 @@ class SleepMonitorHandler extends TaskHandler {
   // ── alarm checker ─────────────────────────────────────────
   Future<void> _checkAlarm() async {
     try {
-      final deviceId = await StorageService.getDeviceId();
-      final apiKey = await StorageService.getApiKey();
-      final baseUrl = await StorageService.getBaseUrl();
+      final deviceId = StorageService.getDeviceId();
+      final apiKey = StorageService.getApiKey();
+      final baseUrl = StorageService.getBaseUrl();
 
       final res = await http.get(
         Uri.parse('$baseUrl/alarm-status?device_id=$deviceId'),

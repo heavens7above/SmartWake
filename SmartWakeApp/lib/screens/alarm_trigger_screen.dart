@@ -57,7 +57,7 @@ class _AlarmTriggerScreenState extends State<AlarmTriggerScreen>
   }
 
   Future<void> _playAlarm() async {
-    final path = await StorageService.getAlarmAudioPath();
+    final path = StorageService.getAlarmAudioPath();
     if (path != null && path.isNotEmpty) {
       await _audio.setReleaseMode(ReleaseMode.loop);
       await _audio.play(DeviceFileSource(path));
@@ -68,7 +68,7 @@ class _AlarmTriggerScreenState extends State<AlarmTriggerScreen>
     await _audio.stop();
 
     // Acknowledge wake to server
-    final deviceId = await StorageService.getDeviceId();
+    final deviceId = StorageService.getDeviceId();
     final acked = await ApiService.ackWake(deviceId);
 
     // Restore system UI

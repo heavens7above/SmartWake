@@ -6,9 +6,10 @@ import 'services/monitor_service.dart';
 import 'services/storage_service.dart';
 import 'services/api_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FlutterForegroundTask.initCommunicationPort();
+  await StorageService.init();
   MonitorService.init();
   runApp(const SmartWakeApp());
 }
@@ -30,7 +31,7 @@ class _SmartWakeAppState extends State<SmartWakeApp> {
   }
 
   Future<void> _registerDevice() async {
-    final deviceId = await StorageService.getDeviceId();
+    final deviceId = StorageService.getDeviceId();
     final ok = await ApiService.registerDevice(deviceId);
     if (ok) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {

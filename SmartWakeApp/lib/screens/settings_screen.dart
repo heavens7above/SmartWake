@@ -36,9 +36,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _load() async {
-    final apiKey = await StorageService.getApiKey();
-    final baseUrl = await StorageService.getBaseUrl();
-    final deviceId = await StorageService.getDeviceId();
+    final apiKey = StorageService.getApiKey();
+    final baseUrl = StorageService.getBaseUrl();
+    final deviceId = StorageService.getDeviceId();
     if (!mounted) return;
     _apiCtrl.text = apiKey;
     _urlCtrl.text = baseUrl;
@@ -99,7 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirm == true) {
       await StorageService.resetDeviceId();
-      _devCtrl.text = await StorageService.getDeviceId();
+      _devCtrl.text = StorageService.getDeviceId();
       if (mounted) setState(() {});
     }
   }

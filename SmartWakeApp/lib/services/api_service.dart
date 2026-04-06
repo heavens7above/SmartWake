@@ -6,16 +6,16 @@ import '../models/models.dart';
 class ApiService {
   static Future<Map<String, String>> _headers() async => {
         'Content-Type': 'application/json',
-        'X-API-Key': await StorageService.getApiKey(),
+        'X-API-Key': StorageService.getApiKey(),
       };
 
-  static Future<String> _base() => StorageService.getBaseUrl();
+  static String _base() => StorageService.getBaseUrl();
 
   static Future<Uri> _uri(
     String path, [
     Map<String, String>? queryParameters,
   ]) async {
-    final base = Uri.parse(await _base());
+    final base = Uri.parse(_base());
     return base.replace(
       path: '${base.path}${path.startsWith('/') ? path : '/$path'}',
       queryParameters: queryParameters,

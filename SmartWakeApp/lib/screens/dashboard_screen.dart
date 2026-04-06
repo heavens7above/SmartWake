@@ -55,7 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _load({bool showLoading = true}) async {
     if (showLoading) setState(() => _loading = true);
-    final id = await StorageService.getDeviceId();
+    final id = StorageService.getDeviceId();
     final data = await ApiService.getDashboard(id);
     if (mounted) {
       setState(() {
@@ -66,7 +66,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _submitRating(int stars) async {
-    final id = await StorageService.getDeviceId();
+    final id = StorageService.getDeviceId();
     setState(() => _pendingRating = stars);
     final ok = await ApiService.submitRating(id, stars);
     if (mounted) {

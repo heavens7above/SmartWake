@@ -20,19 +20,22 @@ class StorageService {
   static const _kAlarmMinute = 'alarm_minute';
   static const _kSetupPermissionsPrompted = 'setup_permissions_prompted';
 
-  static Future<SharedPreferences> get _p => SharedPreferences.getInstance();
+  static late final SharedPreferences _prefs;
+
+  static Future<void> init() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
 
   // ── Device ID ──────────────────────────────────────────────
-  static Future<String> getDeviceId() async {
-    final p = await _p;
-    var id = p.getString(_kDeviceId);
+  static String getDeviceId() {
+    var id = _prefs.getString(_kDeviceId);
     if (id == null || id.isEmpty) {
       final rng = Random.secure();
       id = List.generate(
         16,
         (_) => rng.nextInt(256),
       ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-      await p.setString(_kDeviceId, id);
+      _prefs.setString(_kDeviceId, id);
     }
     return id;
   }
@@ -43,29 +46,29 @@ class StorageService {
       await resetDeviceId();
       return;
     }
-    await (await _p).setString(_kDeviceId, trimmed);
+    await _prefs.setString(_kDeviceId, trimmed);
   }
 
-  static Future<void> resetDeviceId() async => (await _p).remove(_kDeviceId);
+  static Future<void> resetDeviceId() async => _prefs.remove(_kDeviceId);
 
   // ── API Key ────────────────────────────────────────────────
-  static Future<String> getApiKey() async {
-    final apiKey = (await _p).getString(_kApiKey)?.trim();
+  static String getApiKey() {
+    final apiKey = _prefs.getString(_kApiKey)?.trim();
     return apiKey != null && apiKey.isNotEmpty ? apiKey : defaultApiKey;
   }
 
   static Future<void> setApiKey(String k) async {
     final trimmed = k.trim();
     if (trimmed.isEmpty) {
-      await (await _p).remove(_kApiKey);
+      await _prefs.remove(_kApiKey);
       return;
     }
-    await (await _p).setString(_kApiKey, trimmed);
+    await _prefs.setString(_kApiKey, trimmed);
   }
 
   // ── Base URL ───────────────────────────────────────────────
-  static Future<String> getBaseUrl() async {
-    final stored = (await _p).getString(_kBaseUrl)?.trim();
+  static String getBaseUrl() {
+    final stored = _prefs.getString(_kBaseUrl)?.trim();
     final value = stored != null && stored.isNotEmpty ? stored : defaultBaseUrl;
     return value.replaceAll(RegExp(r'/$'), '');
   }
@@ -73,56 +76,56 @@ class StorageService {
   static Future<void> setBaseUrl(String url) async {
     final normalized = url.trim().replaceAll(RegExp(r'/$'), '');
     if (normalized.isEmpty) {
-      await (await _p).remove(_kBaseUrl);
+      await _prefs.remove(_kBaseUrl);
       return;
     }
-    await (await _p).setString(_kBaseUrl, normalized);
+    await _prefs.setString(_kBaseUrl, normalized);
   }
 
   // ── Alarm Audio Path ───────────────────────────────────────
-  static Future<String?> getAlarmAudioPath() async =>
-      (await _p).getString(_kAlarmAudioPath);
+  static String? getAlarmAudioPath() =>
+      _prefs.getString(_kAlarmAudioPath);
 
   static Future<void> setAlarmAudioPath(String path) async {
     final trimmed = path.trim();
     if (trimmed.isEmpty) {
-      await (await _p).remove(_kAlarmAudioPath);
+      await _prefs.remove(_kAlarmAudioPath);
       return;
     }
-    await (await _p).setString(_kAlarmAudioPath, trimmed);
+    await _prefs.setString(_kAlarmAudioPath, trimmed);
   }
 
   // ── Alarm Time (persistent) ────────────────────────────────
-  static Future<TimeOfDay?> getAlarmTime() async {
-    final p = await _p;
-    final hour = p.getInt(_kAlarmHour);
-    final minute = p.getInt(_kAlarmMinute);
+  static TimeOfDay? getAlarmTime() {
+
+    final hour = _prefs.getInt(_kAlarmHour);
+    final minute = _prefs.getInt(_kAlarmMinute);
     if (hour == null || minute == null) return null;
     return TimeOfDay(hour: hour, minute: minute);
   }
 
   static Future<void> setAlarmTime(TimeOfDay time) async {
-    final p = await _p;
-    await p.setInt(_kAlarmHour, time.hour);
-    await p.setInt(_kAlarmMinute, time.minute);
+
+    await _prefs.setInt(_kAlarmHour, time.hour);
+    await _prefs.setInt(_kAlarmMinute, time.minute);
   }
 
   static Future<void> clearAlarmTime() async {
-    final p = await _p;
-    await p.remove(_kAlarmHour);
-    await p.remove(_kAlarmMinute);
+
+    await _prefs.remove(_kAlarmHour);
+    await _prefs.remove(_kAlarmMinute);
   }
 
   // ── Monitoring state ───────────────────────────────────────
-  static Future<bool> getIsMonitoring() async =>
-      (await _p).getBool(_kMonitoring) ?? false;
+  static bool getIsMonitoring() =>
+      _prefs.getBool(_kMonitoring) ?? false;
 
   static Future<void> setIsMonitoring(bool v) async =>
-      (await _p).setBool(_kMonitoring, v);
+      _prefs.setBool(_kMonitoring, v);
 
-  static Future<bool> getSetupPermissionsPrompted() async =>
-      (await _p).getBool(_kSetupPermissionsPrompted) ?? false;
+  static bool getSetupPermissionsPrompted() =>
+      _prefs.getBool(_kSetupPermissionsPrompted) ?? false;
 
   static Future<void> setSetupPermissionsPrompted(bool value) async =>
-      (await _p).setBool(_kSetupPermissionsPrompted, value);
+      _prefs.setBool(_kSetupPermissionsPrompted, value);
 }
