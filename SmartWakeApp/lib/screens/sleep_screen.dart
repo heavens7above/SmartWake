@@ -123,7 +123,7 @@ class _SleepScreenState extends State<SleepScreen>
   }
 
   Future<void> _promptPermissionsOnFirstLaunch() async {
-    final prompted = await StorageService.getSetupPermissionsPrompted();
+    final prompted = StorageService.getSetupPermissionsPrompted();
     if (prompted) return;
     await _requestMonitoringPermissions();
   }

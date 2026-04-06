@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 
 import pytest
 
+import src.modules.alarms as alarms
+
 
 class FakeCursor:
     def __init__(self, *, fetchone_results=None, fetchall_results=None):
@@ -152,3 +154,40 @@ def test_logs_reject_out_of_range_accelerometer_values(client, api_key):
 
     assert response.status_code == 422
     assert "accel_x must be between -100 and 100" in response.text
+
+
+def test_get_alarm_from_registry():
+    device_id = "test_device_1"
+    expected_alarm = "2023-10-27T07:00:00Z"
+
+    alarms.alarm_registry[device_id] = expected_alarm
+
+    assert alarms.get_alarm(device_id) == expected_alarm
+
+    alarms.alarm_registry.pop(device_id, None)
+
+
+def test_get_alarm_from_db_found(monkeypatch):
+    device_id = "test_device_2"
+    expected_alarm = "2023-10-28T07:00:00Z"
+    cursor = FakeCursor(fetchone_results=[{"alarm_time": expected_alarm}])
+
+    monkeypatch.setattr(alarms, "get_db", fake_get_db(FakeConnection(cursor)))
+    alarms.alarm_registry.pop(device_id, None)
+
+    result = alarms.get_alarm(device_id)
+
+    assert result == expected_alarm
+    assert alarms.alarm_registry.get(device_id) == expected_alarm
+
+    alarms.alarm_registry.pop(device_id, None)
+
+
+def test_get_alarm_from_db_not_found(monkeypatch):
+    device_id = "test_device_3"
+    cursor = FakeCursor(fetchone_results=[None])
+
+    monkeypatch.setattr(alarms, "get_db", fake_get_db(FakeConnection(cursor)))
+    alarms.alarm_registry.pop(device_id, None)
+
+    assert alarms.get_alarm(device_id) is None

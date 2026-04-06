@@ -34,11 +34,11 @@ class _AlarmScreenState extends State<AlarmScreen> {
   }
 
   Future<void> _init() async {
-    _deviceId = await StorageService.getDeviceId();
-    _alarmAudioPath = await StorageService.getAlarmAudioPath();
+    _deviceId = StorageService.getDeviceId();
+    _alarmAudioPath = StorageService.getAlarmAudioPath();
 
     // Restore persisted alarm time
-    final savedTime = await StorageService.getAlarmTime();
+    final savedTime = StorageService.getAlarmTime();
     if (savedTime != null && mounted) {
       setState(() => _selectedTime = savedTime);
     }

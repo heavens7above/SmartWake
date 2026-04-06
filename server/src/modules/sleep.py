@@ -224,33 +224,45 @@ def _should_reset_confirmed_state(device_id: str, timestamp: str, state: dict) -
         return True
 
 
+def _load_initial_onset_state(device_id: str) -> dict:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT onset_time
+            FROM sleep_sessions
+            WHERE device_id = %s AND alarm_fired = FALSE AND onset_time IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (device_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return {
+                "consecutive": 2,
+                "confirmed": True,
+                "onset_time": row["onset_time"],
+            }
+        return {
+            "consecutive": 0,
+            "confirmed": False,
+            "onset_time": None,
+        }
+
+
+def _save_confirmed_session(device_id: str, onset_time: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO sleep_sessions (device_id, onset_time) VALUES (%s, %s)",
+            (device_id, onset_time),
+        )
+
+
 def process_log(device_id: str, timestamp: str, sleep_prob: float):
     if device_id not in onset_state:
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT onset_time
-                FROM sleep_sessions
-                WHERE device_id = %s AND alarm_fired = FALSE AND onset_time IS NOT NULL
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (device_id,),
-            )
-            row = cursor.fetchone()
-            if row:
-                onset_state[device_id] = {
-                    "consecutive": 2,
-                    "confirmed": True,
-                    "onset_time": row["onset_time"],
-                }
-            else:
-                onset_state[device_id] = {
-                    "consecutive": 0,
-                    "confirmed": False,
-                    "onset_time": None,
-                }
+        onset_state[device_id] = _load_initial_onset_state(device_id)
 
     state = onset_state[device_id]
 
@@ -274,12 +286,7 @@ def process_log(device_id: str, timestamp: str, sleep_prob: float):
 
         if state["consecutive"] >= 2:
             state["confirmed"] = True
-            with get_db() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO sleep_sessions (device_id, onset_time) VALUES (%s, %s)",
-                    (device_id, state["onset_time"]),
-                )
+            _save_confirmed_session(device_id, state["onset_time"])
             alarm_time = schedule_alarm(device_id, state["onset_time"])
             return {
                 "sleep_prob": sleep_prob,
@@ -301,9 +308,78 @@ def process_log(device_id: str, timestamp: str, sleep_prob: float):
     }
 
 
+def _insert_log_and_fetch_history(payload: LogPayload, magnitude: float) -> tuple[int, list]:
+    timestamp_str = payload.timestamp.isoformat()
+    hour = payload.timestamp.hour
+    minute = payload.timestamp.minute
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO logs (
+                device_id, timestamp, charging, battery_level,
+                accel_x, accel_y, accel_z, accel_magnitude,
+                notification_count, hour, minute
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (
+                payload.device_id,
+                timestamp_str,
+                payload.charging,
+                payload.battery_level,
+                payload.accel_x,
+                payload.accel_y,
+                payload.accel_z,
+                magnitude,
+                payload.notification_count,
+                hour,
+                minute,
+            ),
+        )
+        inserted_id = cursor.fetchone()["id"]
+        cursor.execute(
+            "SELECT * FROM logs WHERE device_id = %s ORDER BY id DESC LIMIT 6",
+            (payload.device_id,),
+        )
+        rows = [dict(row) for row in cursor.fetchall()]
+
+    rows.reverse()
+    return inserted_id, rows
+
+
+def _perform_inference(rows: list, device_id: str) -> float:
+    try:
+        feature_vector = build_feature_vector(rows)
+        return predict(feature_vector)
+    except ModelUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logging.exception("Telemetry inference failed for device %s", device_id)
+        raise HTTPException(status_code=503, detail=f"Sleep inference failed: {exc}") from exc
+
+
+def _update_sleep_prob(inserted_id: int, sleep_prob: float):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE logs SET sleep_prob = %s WHERE id = %s",
+            (sleep_prob, inserted_id),
+        )
+
+
 # ======================== Routes ========================
 @router.post("/model/upload", summary="Hot-swap the sleep model")
 async def upload_model(file: UploadFile = File(...)):
+    if os.getenv("ALLOW_MODEL_UPLOAD", "false").lower() != "true":
+        raise HTTPException(
+            status_code=403,
+            detail="Model upload is disabled in this environment for security reasons.",
+        )
+
     if not file.filename or not file.filename.endswith(".pkl"):
         raise HTTPException(status_code=400, detail="Only .pkl files are accepted.")
 
@@ -365,59 +441,12 @@ def create_log(payload: LogPayload):
     logging.info("Incoming telemetry for %s at %s", payload.device_id, payload.timestamp.isoformat())
 
     magnitude = compute_magnitude(payload.accel_x, payload.accel_y, payload.accel_z)
-    timestamp_str = payload.timestamp.isoformat()
-    hour = payload.timestamp.hour
-    minute = payload.timestamp.minute
-
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO logs (
-                device_id, timestamp, charging, battery_level,
-                accel_x, accel_y, accel_z, accel_magnitude,
-                notification_count, hour, minute
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id
-            """,
-            (
-                payload.device_id,
-                timestamp_str,
-                payload.charging,
-                payload.battery_level,
-                payload.accel_x,
-                payload.accel_y,
-                payload.accel_z,
-                magnitude,
-                payload.notification_count,
-                hour,
-                minute,
-            ),
-        )
-        inserted_id = cursor.fetchone()["id"]
-        cursor.execute(
-            "SELECT * FROM logs WHERE device_id = %s ORDER BY id DESC LIMIT 6",
-            (payload.device_id,),
-        )
-        rows = [dict(row) for row in cursor.fetchall()]
-
-    rows.reverse()
+    inserted_id, rows = _insert_log_and_fetch_history(payload, magnitude)
     if len(rows) < 2:
         return {"state": "INSUFFICIENT_DATA"}
 
-    try:
-        feature_vector = build_feature_vector(rows)
-        sleep_prob = predict(feature_vector)
-    except ModelUnavailableError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        logging.exception("Telemetry inference failed for device %s", payload.device_id)
-        raise HTTPException(status_code=503, detail=f"Sleep inference failed: {exc}") from exc
+    sleep_prob = _perform_inference(rows, payload.device_id)
+    _update_sleep_prob(inserted_id, sleep_prob)
 
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("UPDATE logs SET sleep_prob = %s WHERE id = %s", (sleep_prob, inserted_id))
-
+    timestamp_str = payload.timestamp.isoformat()
     return process_log(payload.device_id, timestamp_str, sleep_prob)

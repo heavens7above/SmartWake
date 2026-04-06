@@ -16,7 +16,9 @@ logging.basicConfig(
 logger = logging.getLogger("smartwake-logger")
 
 SERVER_URL = os.getenv("SMARTWAKE_URL", "https://your-railway-url.up.railway.app")
-API_KEY = os.getenv("SMARTWAKE_API_KEY", "sk_live_smartwake_93f8e21a")
+API_KEY = os.environ.get("SMARTWAKE_API_KEY")
+if not API_KEY:
+    raise RuntimeError("SMARTWAKE_API_KEY environment variable is not set")
 DEVICE_ID_FILE = "device_id.txt"
 
 def get_device_id():
@@ -31,6 +33,7 @@ def get_device_id():
         return new_id
 
 DEVICE_ID = get_device_id()
+_ACCEL_SENSOR_KEY = None
 
 def get_battery():
     try:
@@ -44,17 +47,25 @@ def get_battery():
         return False, 0
 
 def get_accel():
+    global _ACCEL_SENSOR_KEY
     try:
         res = subprocess.run(["termux-sensor", "-s", "Accelerometer", "-n", "1"], capture_output=True, text=True, timeout=5)
         data = json.loads(res.stdout)
-        keys = list(data.keys())
-        if not keys: return 0.0, 0.0, 0.0
+        if _ACCEL_SENSOR_KEY and _ACCEL_SENSOR_KEY in data:
+            values = data[_ACCEL_SENSOR_KEY]["values"]
+            return float(values[0]), float(values[1]), float(values[2])
+
         sensor_key = None
-        for k in keys:
-            if "ccelerometer" in k.lower():
+        for k in data:
+            if "ccelerometer" in k or "Accelerometer" in k:
                 sensor_key = k
                 break
-        if not sensor_key: sensor_key = keys[0]
+        if sensor_key is None:
+            sensor_key = next(iter(data), None)
+
+        if not sensor_key:
+            return 0.0, 0.0, 0.0
+        _ACCEL_SENSOR_KEY = sensor_key
         values = data[sensor_key]["values"]
         return float(values[0]), float(values[1]), float(values[2])
     except Exception:

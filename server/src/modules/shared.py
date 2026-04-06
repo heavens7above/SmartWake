@@ -8,6 +8,7 @@ from urllib.parse import quote_plus
 
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # ======================== Server Config ========================
