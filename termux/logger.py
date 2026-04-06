@@ -16,7 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger("smartwake-logger")
 
 SERVER_URL = os.getenv("SMARTWAKE_URL", "https://your-railway-url.up.railway.app")
-API_KEY = os.getenv("SMARTWAKE_API_KEY", "sk_live_smartwake_93f8e21a")
+API_KEY = os.getenv("SMARTWAKE_API_KEY", "")
 DEVICE_ID_FILE = "device_id.txt"
 
 def get_device_id():

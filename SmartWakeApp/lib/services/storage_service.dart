@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class StorageService {
   static const defaultApiKey = String.fromEnvironment(
     'SMARTWAKE_API_KEY',
-    defaultValue: 'sk_live_smartwake_93f8e21a',
+    defaultValue: '',
   );
   static const defaultBaseUrl = String.fromEnvironment(
     'SMARTWAKE_BASE_URL',
