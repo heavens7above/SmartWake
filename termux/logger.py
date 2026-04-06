@@ -47,14 +47,14 @@ def get_accel():
     try:
         res = subprocess.run(["termux-sensor", "-s", "Accelerometer", "-n", "1"], capture_output=True, text=True, timeout=5)
         data = json.loads(res.stdout)
-        keys = list(data.keys())
-        if not keys: return 0.0, 0.0, 0.0
-        sensor_key = None
-        for k in keys:
-            if "ccelerometer" in k.lower():
+        for k in data:
+            if "ccelerometer" in k or "Accelerometer" in k:
                 sensor_key = k
                 break
-        if not sensor_key: sensor_key = keys[0]
+        else:
+            sensor_key = next(iter(data), None)
+
+        if not sensor_key: return 0.0, 0.0, 0.0
         values = data[sensor_key]["values"]
         return float(values[0]), float(values[1]), float(values[2])
     except Exception:
