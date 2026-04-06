@@ -13,7 +13,9 @@ logging.basicConfig(
 log = logging.getLogger("smartwake-alarm")
 
 SERVER_URL = os.getenv("SMARTWAKE_URL", "https://your-railway-url.up.railway.app")
-API_KEY = os.getenv("SMARTWAKE_API_KEY", "sk_live_smartwake_93f8e21a")
+API_KEY = os.environ.get("SMARTWAKE_API_KEY")
+if not API_KEY:
+    raise ValueError("SMARTWAKE_API_KEY environment variable is not set")
 DEVICE_ID_FILE = "device_id.txt"
 
 def get_device_id():
