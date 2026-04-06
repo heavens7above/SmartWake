@@ -129,13 +129,19 @@ def predict(feature_vector: np.ndarray) -> float:
         raise ModelUnavailableError(f"Sleep model inference failed: {exc}") from exc
 
     classes = list(getattr(current_model, "classes_", []))
-    positive_index = classes.index(1) if 1 in classes else (1 if probs.shape[1] > 1 else None)
+    positive_index = (
+        classes.index(1) if 1 in classes else (1 if probs.shape[1] > 1 else None)
+    )
     if positive_index is None:
-        raise ModelUnavailableError("Sleep model does not expose a positive sleep class.")
+        raise ModelUnavailableError(
+            "Sleep model does not expose a positive sleep class."
+        )
 
     probability = float(probs[0][positive_index])
     if not 0.0 <= probability <= 1.0:
-        raise ModelUnavailableError("Sleep model returned an invalid probability outside [0, 1].")
+        raise ModelUnavailableError(
+            "Sleep model returned an invalid probability outside [0, 1]."
+        )
     return probability
 
 
@@ -217,7 +223,9 @@ def _should_reset_confirmed_state(device_id: str, timestamp: str, state: dict) -
 
     try:
         if session_row and session_row["reset_time"]:
-            reset_dt = normalize_datetime(datetime.fromisoformat(session_row["reset_time"]))
+            reset_dt = normalize_datetime(
+                datetime.fromisoformat(session_row["reset_time"])
+            )
             return current_dt >= reset_dt
         return current_dt - onset_dt >= timedelta(hours=16)
     except (TypeError, ValueError):
@@ -254,7 +262,9 @@ def process_log(device_id: str, timestamp: str, sleep_prob: float):
 
     state = onset_state[device_id]
 
-    if state["confirmed"] and _should_reset_confirmed_state(device_id, timestamp, state):
+    if state["confirmed"] and _should_reset_confirmed_state(
+        device_id, timestamp, state
+    ):
         state = {"consecutive": 0, "confirmed": False, "onset_time": None}
         onset_state[device_id] = state
 
@@ -355,16 +365,18 @@ def model_info():
     return {
         "loaded": True,
         "model_type": type(current_model).__name__,
-        "source_path": _display_model_path(Path(_model_source_path)) if _model_source_path else None,
+        "source_path": (
+            _display_model_path(Path(_model_source_path))
+            if _model_source_path
+            else None
+        ),
         "model_file_exists": MODEL_FILE.exists(),
     }
 
 
-@router.post("/logs/raw.log")
-def create_log(payload: LogPayload):
-    logging.info("Incoming telemetry for %s at %s", payload.device_id, payload.timestamp.isoformat())
-
-    magnitude = compute_magnitude(payload.accel_x, payload.accel_y, payload.accel_z)
+def _insert_log_and_fetch_history(
+    payload: LogPayload, magnitude: float
+) -> tuple[int, list]:
     timestamp_str = payload.timestamp.isoformat()
     hour = payload.timestamp.hour
     minute = payload.timestamp.minute
@@ -402,22 +414,49 @@ def create_log(payload: LogPayload):
         rows = [dict(row) for row in cursor.fetchall()]
 
     rows.reverse()
-    if len(rows) < 2:
-        return {"state": "INSUFFICIENT_DATA"}
+    return inserted_id, rows
 
+
+def _perform_inference(rows: list, device_id: str) -> float:
     try:
         feature_vector = build_feature_vector(rows)
         sleep_prob = predict(feature_vector)
+        return sleep_prob
     except ModelUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        logging.exception("Telemetry inference failed for device %s", payload.device_id)
-        raise HTTPException(status_code=503, detail=f"Sleep inference failed: {exc}") from exc
+        logging.exception("Telemetry inference failed for device %s", device_id)
+        raise HTTPException(
+            status_code=503, detail=f"Sleep inference failed: {exc}"
+        ) from exc
 
+
+def _update_sleep_prob(inserted_id: int, sleep_prob: float):
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE logs SET sleep_prob = %s WHERE id = %s", (sleep_prob, inserted_id))
+        cursor.execute(
+            "UPDATE logs SET sleep_prob = %s WHERE id = %s", (sleep_prob, inserted_id)
+        )
 
+
+@router.post("/logs/raw.log")
+def create_log(payload: LogPayload):
+    logging.info(
+        "Incoming telemetry for %s at %s",
+        payload.device_id,
+        payload.timestamp.isoformat(),
+    )
+
+    magnitude = compute_magnitude(payload.accel_x, payload.accel_y, payload.accel_z)
+    inserted_id, rows = _insert_log_and_fetch_history(payload, magnitude)
+
+    if len(rows) < 2:
+        return {"state": "INSUFFICIENT_DATA"}
+
+    sleep_prob = _perform_inference(rows, payload.device_id)
+    _update_sleep_prob(inserted_id, sleep_prob)
+
+    timestamp_str = payload.timestamp.isoformat()
     return process_log(payload.device_id, timestamp_str, sleep_prob)
