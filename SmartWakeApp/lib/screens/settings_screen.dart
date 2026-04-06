@@ -284,9 +284,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           label: Text(_saved ? 'SAVED!' : 'SAVE SETTINGS'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _saved
-                                ? AppTheme.teal
-                                : AppTheme.primary,
+                            backgroundColor:
+                                _saved ? AppTheme.teal : AppTheme.primary,
                           ),
                         ),
                       ),

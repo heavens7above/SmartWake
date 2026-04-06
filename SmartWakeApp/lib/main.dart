@@ -6,8 +6,9 @@ import 'services/monitor_service.dart';
 import 'services/storage_service.dart';
 import 'services/api_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await StorageService.init();
   FlutterForegroundTask.initCommunicationPort();
   MonitorService.init();
   runApp(const SmartWakeApp());

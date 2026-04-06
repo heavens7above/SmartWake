@@ -112,162 +112,163 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: CircularProgressIndicator(color: AppTheme.primary),
                 )
               : _data == null
-              ? const Center(
-                  child: Text(
-                    'Could not load data',
-                    style: TextStyle(color: AppTheme.textSecond),
-                  ),
-                )
-              : CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'SLEEP HISTORY',
-                              style: TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                            const Text(
-                              'Last session & telemetry logs',
-                              style: TextStyle(
-                                color: AppTheme.textSecond,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Most recent session
-                            if (_data!.recentSession != null)
-                              _SessionCard(
-                                session: _data!.recentSession!,
-                                onRate: _submitRating,
-                                pending: _pendingRating,
-                              )
-                            else
-                              const GlowCard(
-                                child: Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(12),
-                                    child: Text(
-                                      'No sessions recorded yet',
-                                      style: TextStyle(
-                                        color: AppTheme.textSecond,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                            const SizedBox(height: 20),
-                            const Text(
-                              'TELEMETRY LOG',
-                              style: TextStyle(
-                                color: AppTheme.textSecond,
-                                fontSize: 11,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                          ],
-                        ),
+                  ? const Center(
+                      child: Text(
+                        'Could not load data',
+                        style: TextStyle(color: AppTheme.textSecond),
                       ),
-                    ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate((ctx, i) {
-                        final entry = _data!.logs[i];
-                        final prob = entry.sleepProb ?? 0.0;
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surface,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppTheme.border),
-                            ),
-                            child: Row(
+                    )
+                  : CustomScrollView(
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  prob > 0.75
-                                      ? Icons.bedtime
-                                      : (prob > 0.4
-                                            ? Icons.bedtime_outlined
-                                            : Icons.visibility),
-                                  color: prob > 0.75
-                                      ? AppTheme.teal
-                                      : (prob > 0.4
-                                            ? AppTheme.primary
-                                            : AppTheme.textSecond),
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _formatDateTimeLabel(
-                                          entry.timestamp,
-                                          parsedLength: 19,
-                                        ),
-                                        style: const TextStyle(
-                                          color: AppTheme.textPrimary,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      Text(
-                                        'mag: ${entry.accelMagnitude.toStringAsFixed(3)}  ${entry.charging ? "⚡" : "🔋"}',
-                                        style: const TextStyle(
-                                          color: AppTheme.textSecond,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
+                                const Text(
+                                  'SLEEP HISTORY',
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 2,
                                   ),
                                 ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '${(prob * 100).toStringAsFixed(0)}%',
-                                      style: TextStyle(
-                                        color: prob > 0.75
-                                            ? AppTheme.teal
-                                            : (prob > 0.4
-                                                  ? AppTheme.primary
-                                                  : AppTheme.textSecond),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const Text(
-                                      'sleep',
-                                      style: TextStyle(
-                                        color: AppTheme.textSecond,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
+                                const Text(
+                                  'Last session & telemetry logs',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecond,
+                                    fontSize: 13,
+                                  ),
                                 ),
+                                const SizedBox(height: 20),
+
+                                // Most recent session
+                                if (_data!.recentSession != null)
+                                  _SessionCard(
+                                    session: _data!.recentSession!,
+                                    onRate: _submitRating,
+                                    pending: _pendingRating,
+                                  )
+                                else
+                                  const GlowCard(
+                                    child: Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(12),
+                                        child: Text(
+                                          'No sessions recorded yet',
+                                          style: TextStyle(
+                                            color: AppTheme.textSecond,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                const SizedBox(height: 20),
+                                const Text(
+                                  'TELEMETRY LOG',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecond,
+                                    fontSize: 11,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
                               ],
                             ),
                           ),
-                        );
-                      }, childCount: _data!.logs.length),
+                        ),
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate((ctx, i) {
+                            final entry = _data!.logs[i];
+                            final prob = entry.sleepProb ?? 0.0;
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surface,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: AppTheme.border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      prob > 0.75
+                                          ? Icons.bedtime
+                                          : (prob > 0.4
+                                              ? Icons.bedtime_outlined
+                                              : Icons.visibility),
+                                      color: prob > 0.75
+                                          ? AppTheme.teal
+                                          : (prob > 0.4
+                                              ? AppTheme.primary
+                                              : AppTheme.textSecond),
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _formatDateTimeLabel(
+                                              entry.timestamp,
+                                              parsedLength: 19,
+                                            ),
+                                            style: const TextStyle(
+                                              color: AppTheme.textPrimary,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            'mag: ${entry.accelMagnitude.toStringAsFixed(3)}  ${entry.charging ? "⚡" : "🔋"}',
+                                            style: const TextStyle(
+                                              color: AppTheme.textSecond,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '${(prob * 100).toStringAsFixed(0)}%',
+                                          style: TextStyle(
+                                            color: prob > 0.75
+                                                ? AppTheme.teal
+                                                : (prob > 0.4
+                                                    ? AppTheme.primary
+                                                    : AppTheme.textSecond),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const Text(
+                                          'sleep',
+                                          style: TextStyle(
+                                            color: AppTheme.textSecond,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }, childCount: _data!.logs.length),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                      ],
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                  ],
-                ),
         ),
       ),
     );
@@ -374,8 +375,7 @@ class _SessionCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(5, (i) {
               final star = i + 1;
-              final selected =
-                  session.qualityRating != null &&
+              final selected = session.qualityRating != null &&
                   star <= session.qualityRating!;
               return GestureDetector(
                 onTap: pending == null ? () => onRate(star) : null,
