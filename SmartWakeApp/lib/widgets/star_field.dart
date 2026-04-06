@@ -77,8 +77,10 @@ class _StarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    const twoPi = 2 * pi;
+    final double twoPiT = twoPi * t;
     for (final s in stars) {
-      final flicker = 0.5 + 0.5 * sin(2 * pi * (t * s.speed + s.phase));
+      final flicker = 0.5 + 0.5 * sin(twoPiT * s.speed + twoPi * s.phase);
       final paint = Paint()
         ..color = Colors.white.withValues(alpha: 0.1 + 0.6 * flicker)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, s.radius * 0.5);
