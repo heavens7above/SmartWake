@@ -62,7 +62,7 @@ def test_sleep_simulation_pipeline(client, api_key, monkeypatch):
     monkeypatch.setattr(
         sleep,
         "get_db",
-        fake_get_db(FakeConnection(insert_cursor), FakeConnection(update_cursor)),
+        fake_get_db(FakeConnection(insert_cursor), FakeConnection(FakeCursor(fetchall_results=[rows])), FakeConnection(update_cursor)),
     )
     monkeypatch.setattr(sleep, "predict", lambda feature_vector: 0.84)
     monkeypatch.setattr(

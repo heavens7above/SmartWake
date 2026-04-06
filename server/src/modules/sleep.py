@@ -360,26 +360,18 @@ def model_info():
     }
 
 
-@router.post("/logs/raw.log")
-def create_log(payload: LogPayload):
-    logging.info("Incoming telemetry for %s at %s", payload.device_id, payload.timestamp.isoformat())
-
-    magnitude = compute_magnitude(payload.accel_x, payload.accel_y, payload.accel_z)
-    timestamp_str = payload.timestamp.isoformat()
-    hour = payload.timestamp.hour
-    minute = payload.timestamp.minute
-
+def _insert_telemetry_log(payload, magnitude: float, timestamp_str: str, hour: int, minute: int) -> int:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            """
+            '''
             INSERT INTO logs (
                 device_id, timestamp, charging, battery_level,
                 accel_x, accel_y, accel_z, accel_magnitude,
                 notification_count, hour, minute
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
-            """,
+            ''',
             (
                 payload.device_id,
                 timestamp_str,
@@ -394,14 +386,35 @@ def create_log(payload: LogPayload):
                 minute,
             ),
         )
-        inserted_id = cursor.fetchone()["id"]
-        cursor.execute(
-            "SELECT * FROM logs WHERE device_id = %s ORDER BY id DESC LIMIT 6",
-            (payload.device_id,),
-        )
-        rows = [dict(row) for row in cursor.fetchall()]
+        return cursor.fetchone()["id"]
 
+def _fetch_recent_logs(device_id: str, limit: int = 6) -> list:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM logs WHERE device_id = %s ORDER BY id DESC LIMIT %s",
+            (device_id, limit),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+def _update_log_sleep_prob(log_id: int, sleep_prob: float):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE logs SET sleep_prob = %s WHERE id = %s", (sleep_prob, log_id))
+
+@router.post("/logs/raw.log")
+def create_log(payload: LogPayload):
+    logging.info("Incoming telemetry for %s at %s", payload.device_id, payload.timestamp.isoformat())
+
+    magnitude = compute_magnitude(payload.accel_x, payload.accel_y, payload.accel_z)
+    timestamp_str = payload.timestamp.isoformat()
+    hour = payload.timestamp.hour
+    minute = payload.timestamp.minute
+
+    inserted_id = _insert_telemetry_log(payload, magnitude, timestamp_str, hour, minute)
+    rows = _fetch_recent_logs(payload.device_id, limit=6)
     rows.reverse()
+
     if len(rows) < 2:
         return {"state": "INSUFFICIENT_DATA"}
 
@@ -416,8 +429,6 @@ def create_log(payload: LogPayload):
         logging.exception("Telemetry inference failed for device %s", payload.device_id)
         raise HTTPException(status_code=503, detail=f"Sleep inference failed: {exc}") from exc
 
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("UPDATE logs SET sleep_prob = %s WHERE id = %s", (sleep_prob, inserted_id))
+    _update_log_sleep_prob(inserted_id, sleep_prob)
 
     return process_log(payload.device_id, timestamp_str, sleep_prob)
