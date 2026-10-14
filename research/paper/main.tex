@@ -289,7 +289,7 @@ The mathematical logic is formalized as follows:
 To maintain rigorous scientific standards, eliminate data fabrication, and avoid synthetic overestimation, we formalize a transparent three-tier data framework.
 
 \subsection{Tier A: Prospective In-Repo Telemetry Protocol}
-The SmartWake repository originally contained training notebooks (\texttt{Train.ipynb}) that operated on generated arrays without storing raw user logs. To enable future clinical trials, we developed a complete prospective data collection protocol, documented in \texttt{research/DATA\_COLLECTION\_PROTOCOL.md}.
+The SmartWake repository originally contained training notebooks (\texttt{Train.ipynb}) that operated on generated arrays without storing raw user logs. To enable future clinical trials, we developed a complete prospective data collection protocol, documented in \texttt{research/}\allowbreak\texttt{DATA\_}\allowbreak\texttt{COLLECTION\_}\allowbreak\texttt{PROTOCOL.md}.
 \begin{itemize}[leftmargin=*]
     \item \textbf{Cohort Design:} 14+ consecutive nights per subject. Phone placed face-up on the mattress adjacent to the chest/pillow.
     \item \textbf{Subjective Ground Truth:} Daily completion of the Karolinska Sleepiness Scale (KSS), Stanford Sleepiness Scale (SSS), and Pittsburgh Sleep Quality Index (PSQI) upon waking.
@@ -432,6 +432,7 @@ Table~\ref{tab:model_metrics} presents the comprehensive performance benchmark a
 \centering
 \caption{Model Performance Comparison under Leave-One-Subject-Out Cross-Validation}
 \label{tab:model_metrics}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccccc}
 \toprule
 \textbf{Model} & \textbf{Validation} & \textbf{Bal. Acc.} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{PR-AUC} & \textbf{MCC} \\
@@ -445,7 +446,8 @@ XGBoost & LOSO & 0.8747 & 0.9837 & 0.9655 & 0.9745 & 0.9883 & 0.6770 \\
 \midrule
 \textit{Gradient Boosting (Random)} & \textit{Leaky Split} & \textit{0.8843} & \textit{0.9879} & \textit{0.9604} & \textit{0.9739} & \textit{0.9936} & \textit{0.6469} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table*}
 
 The empirical findings confirm the hypothesis that tree-based ensembles substantially outperform classical heuristics and linear classifiers:
@@ -576,6 +578,7 @@ Table~\ref{tab:literature_comparison} contextualizes SmartWake's empirical perfo
 \centering
 \caption{Empirical Comparison with Published Sleep Telemetry and Smart Alarm Architectures}
 \label{tab:literature_comparison}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lllcccc}
 \toprule
 \textbf{System / Study} & \textbf{Sensing Modality} & \textbf{Algorithm} & \textbf{Validation Scheme} & \textbf{Sensitivity} & \textbf{Specificity} & \textbf{Bal. Acc.} \\
@@ -588,7 +591,8 @@ Menghini et al. (2021)~\cite{menghini2021performance} & Commercial Wearables (Av
 \midrule
 \textbf{SmartWake (This Study)} & \textbf{Smartphone Accel (Mattress)} & \textbf{Gradient Boosting} & \textbf{Subject LOSO} & \textbf{0.97} & \textbf{0.75} & \textbf{0.863} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table*}
 
 Our findings demonstrate that SmartWake's tabular gradient boosting pipeline achieves classification sensitivity (0.97) and balanced accuracy (0.863) comparable to or exceeding published wearable systems. However, as established in Section~\ref{sec:results}, this high performance is heavily supported by circadian clock priors ($x_8, x_9$). When restricted exclusively to mattress-transmitted acceleration kinematics (Table~\ref{tab:ablations}, row 2), balanced accuracy adjusts to 0.8655, aligning closely with Min et al.'s findings for mattress-based sensing~\cite{min2014toss}.
@@ -617,7 +621,7 @@ To adhere to rigorous academic honesty, we explicitly enumerate the internal, ex
 The deployment of longitudinal domestic sensing platforms raises significant ethical and privacy considerations:
 \begin{itemize}[leftmargin=*]
     \item \textbf{Continuous Sensor Telemetry and Domestic Privacy:} High-frequency accelerometer streams can inadvertently capture sensitive secondary information, including intimacy, ambient room footsteps, and user habits. SmartWake mitigates this by computing summary statistics over 5-minute epochs and transmitting only aggregated scalar vectors, never raw high-frequency waveforms.
-    \item \textbf{Informed Consent and Data Sovereignty:} In our Tier A protocol (\texttt{research/DATA\_COLLECTION\_PROTOCOL.md}), all participants retain complete ownership of their sensor logs, with explicit provisions for immediate revocation of consent and automated data erasure.
+    \item \textbf{Informed Consent and Data Sovereignty:} In our Tier A protocol (\texttt{research/}\allowbreak\texttt{DATA\_}\allowbreak\texttt{COLLECTION\_}\allowbreak\texttt{PROTOCOL.md}), all participants retain complete ownership of their sensor logs, with explicit provisions for immediate revocation of consent and automated data erasure.
     \item \textbf{No Medical Diagnostic Claims:} SmartWake is strictly a consumer wellness tool for circadian schedule optimization. It is not an FDA-cleared or CE-marked medical device and must never be utilized for the diagnosis or treatment of sleep disorders such as obstructive sleep apnea, narcolepsy, or chronic insomnia.
 \end{itemize}
 
@@ -657,6 +661,7 @@ To ensure exact reproducibility across all benchmarked algorithms, Table~\ref{ta
 \centering
 \caption{Comprehensive Hyperparameter Specifications for Benchmarked Models}
 \label{tab:app_hyperparameters}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{llp{9.0cm}}
 \toprule
 \textbf{Model Identifier} & \textbf{Library Framework} & \textbf{Hyperparameter Specification} \\
@@ -668,7 +673,8 @@ Random Forest & \texttt{scikit-learn} v1.8.0 & $n_{\text{estimators}} = 100$, cr
 \textbf{Gradient Boosting (Repo)} & \texttt{scikit-learn} v1.8.0 & $n_{\text{estimators}} = 200$, learning rate $\eta = 0.1$, max depth $d = 4$, loss $= \texttt{"log\_loss"}$, subsample $= 1.0$, min samples leaf $= 1$. \\
 XGBoost & \texttt{xgboost} v3.4.1 & $n_{\text{estimators}} = 200$, learning rate $\eta = 0.1$, max depth $d = 4$, objective $= \texttt{"binary:logistic"}$, tree method $= \texttt{"hist"}$. \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table*}
 
 \section{Extended Tabular Metrics and Confidence Intervals}
@@ -680,6 +686,7 @@ Table~\ref{tab:app_full_metrics} provides the complete set of primary and auxili
 \centering
 \caption{Complete Performance Metrics and 95\% Empirical Bootstrap Confidence Intervals}
 \label{tab:app_full_metrics}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccccc}
 \toprule
 \textbf{Model} & \textbf{F1-Score} & \textbf{95\% F1 CI} & \textbf{Bal. Acc.} & \textbf{95\% Bal. Acc. CI} & \textbf{MCC} & \textbf{95\% MCC CI} \\
@@ -693,7 +700,8 @@ XGBoost & 0.9745 & [0.9716, 0.9776] & 0.8747 & [0.8563, 0.8939] & 0.6770 & [0.64
 \midrule
 \textit{Gradient Boosting (Leaky)} & \textit{0.9739} & \textit{[0.9674, 0.9806]} & \textit{0.8843} & \textit{[0.8394, 0.9277]} & \textit{0.6469} & \textit{[0.5665, 0.7282]} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table*}
 
 \section{FastAPI Endpoint Schemas and Payloads}
@@ -729,7 +737,7 @@ source research/venv/bin/activate
 python research/eda.py
 
 # 3. Execute all benchmarks, ablations, SHAP, and latency tests
-python research/run\_experiments.py
+python research/run_experiments.py
 
 # 4. Compile paper PDF using tectonic
 /opt/homebrew/bin/tectonic research/paper/main.tex
