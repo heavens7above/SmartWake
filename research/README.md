@@ -2,9 +2,9 @@
 
 This directory contains the complete, reproducible academic research package, empirical code, benchmarks, figures, and LaTeX manuscript for the paper:
 
-> **SmartWake: Empirical Analysis of a Smartphone Accelerometer-Based Sleep Onset and Ultradian Smart Alarm Engine**  
-> *Autonomous Research Engineer, BSc (Hons) Data Science and Artificial Intelligence*  
-> *Compiled Manuscript:* [`research/paper/main.pdf`](paper/main.pdf) (25 pages, IEEE Journal format, 9,657 words)
+> *Author:* **Samarth Singh**, BSc (Hons) Data Science and Artificial Intelligence  
+> *Affiliation:* Department of Data Science, School of Sciences, CHRIST (Deemed to be University), Delhi NCR, India  
+> *Compiled Manuscript:* [`research/paper/main.pdf`](paper/main.pdf) (25 pages, IEEE Journal format, 9,660 words)
 
 ---
 

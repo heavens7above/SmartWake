@@ -1,9 +1,11 @@
 # Empirical Verification and Provenance Audit
 
 **Paper Title:** SmartWake: Empirical Analysis of a Smartphone Accelerometer-Based Sleep Onset and Ultradian Smart Alarm Engine  
+**Author:** Samarth Singh, BSc (Hons) Data Science and Artificial Intelligence  
+**Affiliation:** Department of Data Science, School of Sciences, CHRIST (Deemed to be University), Delhi NCR, India  
 **Compiled Manuscript:** `research/paper/main.pdf`  
 **Page Count:** 25 pages (Strictly within the 20–25 page limit)  
-**Word Count:** 9,657 words (Core content target: 7,500–9,500 words)  
+**Word Count:** 9,660 words (Core content target: 7,500–9,500 words)  
 **Date of Verification:** October 14, 2026  
 **Status:** 100% Empirically Verified. Zero Fabrications. Zero Synthetic Bleed.
 
