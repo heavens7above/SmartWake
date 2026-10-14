@@ -1,0 +1,6 @@
+subject,onset_epoch,deadline_epoch,wake_epoch,cycles_completed,advance_minutes,fallback_to_deadline,wake_stage,awakened_in_deep_n3,awakened_in_light_or_rem
+synthetic_subject_01,4,1273,1264,70,45.0,False,5,0,1
+synthetic_subject_02,3,1277,1263,70,70.0,False,0,0,0
+synthetic_subject_03,3,1231,1227,68,20.0,False,3,1,0
+synthetic_subject_04,3,1261,1245,69,80.0,False,2,0,1
+synthetic_subject_05,4,1248,1248,69,0.0,True,3,1,0

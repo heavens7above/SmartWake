@@ -1,0 +1,10 @@
+feature,mean_abs_shap
+consecutive_still_count,1.1160891476389614
+accel_magnitude_std,0.9948364003083955
+hour_sin,0.6725759316067729
+notification_delta,0.596251432558926
+hour_cos,0.3417383338412652
+accel_magnitude_max,0.321282964797289
+accel_magnitude_mean,0.2599763687526034
+zero_crossing_rate,0.20148775098539493
+charging,0.0
