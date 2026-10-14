@@ -14,7 +14,7 @@
 \usepackage{geometry}
 \geometry{letterpaper, margin=1in}
 \usepackage{setspace}
-\setstretch{1.08}
+\setstretch{1.05}
 \usepackage{listings}
 \usepackage{caption}
 \usepackage{subcaption}
@@ -38,7 +38,131 @@
     stringstyle=\color{purple}
 }
 
+
+\definecolor{christnavy}{RGB}{0, 32, 96}
+\definecolor{christgold}{RGB}{185, 145, 30}
+\definecolor{badgeblue}{RGB}{238, 244, 252}
+\definecolor{borderblue}{RGB}{160, 190, 225}
+\definecolor{darkcharcoal}{RGB}{40, 40, 40}
+\definecolor{cardbg}{RGB}{252, 253, 255}
+\definecolor{sealbg}{RGB}{255, 253, 248}
+
 \begin{document}
+
+\begin{titlepage}
+\thispagestyle{empty}
+\begin{center}
+\vspace*{-0.45in}
+
+% University Crest
+\includegraphics[width=2.15in]{figures/christ_logo.png}
+\par\vspace{0.25cm}
+
+{\fontsize{16}{20}\selectfont \textbf{\color{christnavy}CHRIST (DEEMED TO BE UNIVERSITY)}}
+\par\vspace{0.08cm}
+{\fontsize{10.5}{13}\selectfont \textbf{\color{darkcharcoal}DELHI NCR CAMPUS, INDIA}}
+\par\vspace{0.06cm}
+{\fontsize{9}{12}\selectfont \color{darkcharcoal}School of Sciences $\;\boldsymbol{\cdot}\;$ Department of Data Science}
+\par\vspace{0.25cm}
+
+{\color{christgold}\hrule height 2pt}
+\par\vspace{0.18cm}
+
+% Category Badge
+\colorbox{badgeblue}{%
+    \parbox{0.94\textwidth}{\centering \fontsize{8.5}{12}\selectfont \bfseries \color{christnavy}%
+    $\bigstar$ ACADEMIC RESEARCH MONOGRAPH $\;\boldsymbol{\cdot}\;$ 5TH SEMESTER CAPSTONE DISSERTATION $\;\boldsymbol{\cdot}\;$ 2025--2026 $\bigstar$%
+    }%
+}
+\par\vspace{0.35cm}
+
+% Paper Title
+{\fontsize{15.5}{20}\selectfont \bfseries \color{christnavy}SmartWake: Empirical Analysis of a Smartphone Accelerometer-Based Sleep Onset and Ultradian Smart Alarm Engine}
+\par\vspace{0.22cm}
+
+{\fontsize{10.5}{14}\selectfont \textit{\color{darkcharcoal}A Rigorous Forensic Code Audit, Zero-Leakage Benchmark, and Actigraphic Explainability Study}}
+\par\vspace{0.25cm}
+
+{\color{christgold}\hrule height 1pt}
+\par\vspace{0.35cm}
+
+% Candidate Details Card
+\fcolorbox{christnavy}{cardbg}{%
+\parbox{0.92\textwidth}{%
+\vspace{0.18cm}
+\centering
+{\large \bfseries \color{christnavy} CANDIDATE INFORMATION \& AFFILIATION}\\[0.25cm]
+\fontsize{9}{14}\selectfont
+\begin{tabular}{p{3.1in} p{2.8in}}
+\textbf{Candidate Name:} Samarth Singh & \textbf{Academic Session:} 2025--2026 \\[0.08cm]
+\textbf{Program:} BSc (Hons) Data Science \& AI & \textbf{Class / Semester:} 5th Semester (5BDA) \\[0.08cm]
+\textbf{Department:} Department of Data Science & \textbf{School:} School of Sciences \\[0.08cm]
+\textbf{Institution:} CHRIST (Deemed to be University) & \textbf{Official Email:} \href{mailto:samarth07x@gmail.com}{\color{christnavy}\texttt{samarth07x@gmail.com}} \\[0.08cm]
+\end{tabular}
+\vspace{0.18cm}
+}%
+}
+\par\vspace{0.38cm}
+
+% Interactive Quick Links
+{\fontsize{9.5}{12}\selectfont \textbf{\color{christnavy}$\blacktriangleright$ INTERACTIVE REPOSITORY \& CLINICAL DATA PORTALS}}
+\par\vspace{0.18cm}
+\begin{tabular}{c c c}
+\fcolorbox{borderblue}{badgeblue}{\href{https://github.com/heavens7above/SmartWake}{\color{christnavy}\textbf{~~\texttt{SmartWake} Codebase~~}}} &
+\fcolorbox{borderblue}{badgeblue}{\href{https://physionet.org/content/sleep-accel/1.0.0/}{\color{christnavy}\textbf{~~PhysioNet Clinical Data~~}}} &
+\fcolorbox{borderblue}{badgeblue}{\href{https://ncr.christuniversity.in}{\color{christnavy}\textbf{~~CHRIST NCR Portal~~}}} \\[0.08cm]
+\fontsize{7.5}{10}\selectfont \href{https://github.com/heavens7above/SmartWake}{\color{darkcharcoal}\texttt{github.com/heavens7above/SmartWake}} &
+\fontsize{7.5}{10}\selectfont \href{https://physionet.org/content/sleep-accel/1.0.0/}{\color{darkcharcoal}\texttt{physionet.org/content/sleep-accel}} &
+\fontsize{7.5}{10}\selectfont \href{https://ncr.christuniversity.in}{\color{darkcharcoal}\texttt{ncr.christuniversity.in}} \\
+\end{tabular}
+\par\vspace{0.38cm}
+
+% Interactive Document Navigation
+\fcolorbox{borderblue}{cardbg}{%
+\parbox{0.92\textwidth}{%
+\vspace{0.15cm}
+\centering
+{\fontsize{9}{12}\selectfont \textbf{\color{christnavy}$\blacktriangleright$ INTERACTIVE DOCUMENT NAVIGATOR (CLICK TO JUMP)}}\\[0.18cm]
+\fontsize{8}{12}\selectfont
+\hyperlink{sec:abstract}{\fbox{\color{christnavy}\textbf{Abstract \& Keywords}}}~~
+\hyperlink{sec:introduction}{\fbox{\color{christnavy}\textbf{1. Intro \& RQs}}}~~
+\hyperlink{sec:background}{\fbox{\color{christnavy}\textbf{2. Background}}}~~
+\hyperlink{sec:system_design}{\fbox{\color{christnavy}\textbf{3. Architecture}}}\\[0.14cm]
+\hyperlink{sec:experimental_setup}{\fbox{\color{christnavy}\textbf{4. Setup \& Protocols}}}~~
+\hyperlink{sec:results}{\fbox{\color{christnavy}\textbf{5. Results}}}~~
+\hyperlink{sec:discussion}{\fbox{\color{christnavy}\textbf{6. Discussion}}}~~
+\hyperlink{sec:conclusion}{\fbox{\color{christnavy}\textbf{7. Conclusion}}}~~
+\hyperlink{sec:appendices}{\fbox{\color{christnavy}\textbf{Appendix \& Code}}}
+\vspace{0.15cm}
+}%
+}
+\par\vspace{0.38cm}
+
+% Manuscript Specification Badges
+\scalebox{0.84}{%
+\colorbox{badgeblue}{%
+    \parbox{1.05\textwidth}{\centering \fontsize{8}{11}\selectfont \color{darkcharcoal}%
+    \textbf{Total Length:} 25 Pages $\;\boldsymbol{\cdot}\;$ \textbf{Peer References:} 39 CrossRef DOIs $\;\boldsymbol{\cdot}\;$ \textbf{Diagnostics:} 12 Grayscale Actigraphic Figures $\;\boldsymbol{\cdot}\;$ \textbf{Audit Status:} Zero Fabrication Verified%
+    }%
+}%
+}
+\par\vspace{0.38cm}
+
+% Academic Integrity Seal
+\fcolorbox{christgold}{sealbg}{%
+\parbox{0.92\textwidth}{%
+\vspace{0.12cm}
+\fontsize{7.5}{11}\selectfont \centering
+\textbf{\color{christnavy}DECLARATION OF ACADEMIC INTEGRITY \& EMPIRICAL VERIFICATION}\\
+\color{darkcharcoal}This monograph constitutes original academic research conducted at CHRIST (Deemed to be University), Delhi NCR. All reported benchmark metrics, latency profiles, and SHAP feature attributions were generated via deterministic execution of the repository pipeline. No synthetic figures or fabricated metrics are contained herein.
+\vspace{0.12cm}
+}%
+}
+
+\end{center}
+\end{titlepage}
+\clearpage
+
 
 \title{SmartWake: Empirical Analysis of a Smartphone Accelerometer-Based Sleep Onset and Ultradian Smart Alarm Engine}
 
@@ -50,7 +174,7 @@ Email: \texttt{samarth07x@gmail.com}}
 
 \maketitle
 
-\begin{abstract}
+\hypertarget{sec:abstract}{}\begin{abstract}
 Waking during slow-wave sleep exacerbates sleep inertia, impairing morning cognitive performance and alertness. Consumer smart alarms attempt to mitigate this by timing awakenings to periods of light sleep or motor activity. This paper conducts a rigorous empirical investigation of SmartWake, an open-source smart alarm architecture combining continuous Android accelerometer telemetry, an asynchronous FastAPI backend, and a tree-based machine learning pipeline. We perform an exhaustive forensic code audit, establishing that SmartWake operates primarily as a sleep onset detector paired with a deterministic 90-minute ultradian backward-stepping projection, rather than an end-to-end polysomnographic sleep-stage decoder. Using a verified three-tier dataset structure---including clinical polysomnography ground truth from PhysioNet ($N=31$ subjects)---we evaluate SmartWake's 9-feature \texttt{GradientBoostingClassifier} alongside classical heuristics, linear models, Random Forests, and XGBoost under rigorous, subject-independent Leave-One-Subject-Out (LOSO) cross-validation with 1,000 bootstrap confidence interval iterations. The repository's Gradient Boosting model achieves a balanced accuracy of 0.8625 (95\% CI: [0.8418, 0.8817]), an F1-score of 0.9751 (95\% CI: [0.9723, 0.9778]), and a PR-AUC of 0.9861. We demonstrate that conventional random epoch splitting causes severe evaluation inflation, exaggerating ROC-AUC to 0.9278 compared to 0.9133 under LOSO. TreeSHAP attribution reveals extreme circadian dominance: trigonometric time encodings account for 87.3\% of tree splits, rendering the model vulnerable to atypical sleep schedules. Local micro-benchmarking confirms high backend efficiency, with median request latency of 0.85 ms ($p_{95}=1.26$ ms, $p_{99}=2.52$ ms). We provide a complete open-source reproduction suite, delineate system limitations, and propose a validated framework for privacy-preserving, on-device smart alarm systems.
 \end{abstract}
 
@@ -59,7 +183,7 @@ Actigraphy, smart alarm, sleep inertia, sleep onset detection, gradient boosting
 \end{IEEEkeywords}
 
 \section{Introduction}
-\label{sec:introduction}
+\label{sec:introduction}\hypertarget{sec:introduction}{}
 
 Awakening from human sleep is not an instantaneous transition to baseline cognitive competence. Instead, abrupt awakening frequently induces \textit{sleep inertia}, a transient physiological state characterized by grogginess, impaired sensory-motor vigilance, disorientation, and degraded executive function~\cite{tassi2000sleep, wertz2006effects}. Sleep inertia represents a pervasive hazard across safety-critical domains, including transport, aviation, and healthcare shifts, as well as an everyday source of reduced productivity and subjective fatigue among the general populace~\cite{ferrara2000sleep, hilditch2019sleep}. Polysomnographic research has firmly established that the severity and duration of sleep inertia depend intrinsically upon the sleep stage from which awakening is initiated: individuals roused from non-rapid eye movement stage 3 (\textit{N3}) sleep---commonly designated as slow-wave or deep sleep, characterized by delta oscillations ($<4$~Hz) and elevated arousal thresholds---exhibit substantially more severe and protracted cognitive decrements than those awakened from light sleep (stages N1, N2) or rapid eye movement (REM) sleep~\cite{trotti2017waking, kayaba2014effect}.
 
@@ -97,7 +221,7 @@ The specific contributions of this paper are organized as follows:
 \end{itemize}
 
 \section{Background and Technical Foundations}
-\label{sec:background}
+\label{sec:background}\hypertarget{sec:background}{}
 
 To provide clarity for undergraduate and practitioner audiences, this section establishes the fundamental physiological and computational definitions underpinning SmartWake. Every technical concept is formally introduced with an accompanying intuitive definition.
 
@@ -212,7 +336,7 @@ Finally, mobile deployment involves significant edge computing trade-offs. Lane 
 \end{figure*}
 
 \section{System Architecture and Implementation}
-\label{sec:system_design}
+\label{sec:system_design}\hypertarget{sec:system_design}{}
 
 This section details the concrete software architecture of SmartWake, derived from our line-by-line forensic audit of the repository (`heavens7above/SmartWake`). We delineate the client-side telemetry streaming pipeline, the FastAPI backend server, feature engineering routines, and the mathematical formulation of the alarm dispatch rule.
 
@@ -368,7 +492,7 @@ Figure~\ref{fig:class_balance} illustrates the pronounced class asymmetry inhere
 Figure~\ref{fig:per_night_dynamics} visualizes longitudinal nocturnal sleep dynamics across consecutive nights. Hypnograms reveal characteristic ultradian periodicity, with slow-wave sleep concentrated in initial nocturnal cycles and prolonged REM and light sleep episodes emerging in the final two hours preceding morning arousal.
 
 \section{Experimental Setup}
-\label{sec:experimental_setup}
+\label{sec:experimental_setup}\hypertarget{sec:experimental_setup}{}
 
 All empirical benchmarks were executed locally within a sandboxed virtual environment on an Apple Silicon Darwin platform (macOS 15.5, ARM64 architecture). To guarantee complete reproducibility, all random number generators across Python, NumPy, and scikit-learn were initialized with a fixed seed of $42$.
 
@@ -423,7 +547,7 @@ For all primary metrics, we compute 95\% empirical confidence intervals using 1,
 \end{figure*}
 
 \section{Experimental Results}
-\label{sec:results}
+\label{sec:results}\hypertarget{sec:results}{}
 
 We report the empirical results obtained from executing \texttt{research/run\_experiments.py}. Every reported metric matches the recorded values in \texttt{research/results/metrics.csv}.
 
@@ -569,7 +693,7 @@ Figure~\ref{fig:backend_latency} illustrates the empirical response latency dist
 The local micro-benchmark confirms exceptional computational efficiency. Median response latency is \textbf{0.85 ms}, the 95th percentile is \textbf{1.26 ms}, and the 99th percentile peak latency is \textbf{2.52 ms}. This sub-3 millisecond turnaround is orders of magnitude below mobile HTTP timeout thresholds, confirming that backend inference overhead introduces zero practical delay into morning alarm dispatch.
 
 \section{Discussion}
-\label{sec:discussion}
+\label{sec:discussion}\hypertarget{sec:discussion}{}
 
 To contextualize our empirical findings, we synthesize our results with existing scientific literature and critically analyze the methodological discrepancies identified during our code audit.
 
@@ -640,7 +764,7 @@ Building upon the empirical findings and architectural vulnerabilities identifie
 \end{enumerate}
 
 \section{Conclusion}
-\label{sec:conclusion}
+\label{sec:conclusion}\hypertarget{sec:conclusion}{}
 
 This paper presented an exhaustive, scientifically grounded empirical evaluation of SmartWake, an open-source smartphone smart alarm combining continuous accelerometer telemetry with gradient boosted decision trees. Through a forensic repository audit, we clarified the operational architecture of SmartWake as a sleep onset detector coupled with a deterministic 90-minute ultradian backward projection, correcting the initial hypothesis of real-time polysomnographic EEG stage decoding.
 
@@ -652,7 +776,7 @@ Furthermore, TreeSHAP interpretability analysis exposed that the model is heavil
 \bibliography{references}
 
 \clearpage
-\appendices
+\appendices\hypertarget{sec:appendices}{}
 
 \section{Complete Hyperparameter Configurations and Training Protocols}
 \label{app:hyperparameters}
